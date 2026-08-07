@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agenda — Engenharia de Aplicação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#EDF0F1; --card:#FFF; --ink:#121A1F; --ink2:#5A666D; --ink3:#87949B;
+  --rule:#D6DDDF; --steel:#17323F; --steel2:#24485A; --copper:#B87333;
+  --ok:#0E7C86; --warn:#B87333; --today:#C4571F; --late:#A32D2D; --done:#8B9499;
+  --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink2)}
+h1{font-size:20px;font-weight:600;letter-spacing:-.01em}
+h2{font-size:16px;font-weight:600;letter-spacing:-.01em}
+a{color:var(--steel2)}
+.hidden{display:none !important}
+
+/* ---- estrutura ---- */
+header.bar{background:var(--steel);color:#E8EDEF;padding:0 20px;position:sticky;top:0;z-index:20}
+.bar-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:20px;height:56px}
+.brand{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:500}
+.brand span{color:var(--copper)}
+.bar-sp{flex:1}
+.who{font-size:13px;color:#A9BAC2;text-align:right;line-height:1.3}
+.who b{display:block;color:#E8EDEF;font-weight:500}
+main{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+
+/* ---- controles ---- */
+button{font-family:var(--sans);font-size:14px;cursor:pointer;border:1px solid transparent;border-radius:3px;padding:9px 16px;font-weight:500;transition:background .15s,border-color .15s}
+.btn{background:var(--steel);color:#fff}
+.btn:hover{background:var(--steel2)}
+.btn-2{background:transparent;color:var(--steel);border-color:var(--rule)}
+.btn-2:hover{border-color:var(--steel);background:#fff}
+.btn-sm{padding:5px 11px;font-size:13px}
+.btn-link{background:none;border:none;color:var(--steel2);padding:0;text-decoration:underline;font-size:13px}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--copper);outline-offset:1px}
+label{display:block;font-size:13px;font-weight:500;color:var(--ink2);margin-bottom:5px}
+input,select,textarea{width:100%;font-family:var(--sans);font-size:14px;padding:9px 11px;border:1px solid var(--rule);border-radius:3px;background:#fff;color:var(--ink)}
+textarea{resize:vertical;min-height:74px}
+.field{margin-bottom:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.check{display:flex;align-items:flex-start;gap:9px;font-size:14px;color:var(--ink)}
+.check input{width:auto;margin-top:3px}
+
+/* ---- cartões ---- */
+.card{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:20px;margin-bottom:18px}
+.card-h{display:flex;align-items:baseline;gap:12px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--rule)}
+.card-h .eyebrow{margin-left:auto}
+
+/* ---- login ---- */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.login{width:100%;max-width:380px}
+.login-mark{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--steel);margin-bottom:6px}
+.login-mark span{color:var(--copper)}
+.login h1{margin-bottom:22px;font-size:24px}
+.login .card{padding:24px}
+
+/* ---- medidor de prazo (elemento central) ---- */
+.gauge{height:5px;background:#E2E7E9;border-radius:2px;display:flex;overflow:hidden;margin:9px 0 6px}
+.gauge i{display:block;height:100%}
+.gauge .over{background:var(--late)}
+.gauge-lbl{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink3)}
+
+/* ---- demanda ---- */
+.dem{border:1px solid var(--rule);border-left:3px solid var(--done);border-radius:3px;background:#fff;padding:14px 16px;margin-bottom:10px}
+.dem-top{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.dem-num{font-family:var(--mono);font-size:12px;color:var(--ink3);letter-spacing:.02em}
+.dem-tit{font-weight:600;font-size:15px}
+.dem-meta{font-size:13px;color:var(--ink2);margin-top:2px}
+.dem-acao{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;padding-top:11px;border-top:1px solid var(--rule)}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;padding:2px 7px;border-radius:2px;border:1px solid;white-space:nowrap}
+.tag-urg{color:var(--late);border-color:var(--late);background:#FCEFEF}
+.tag-st{color:var(--ink2);border-color:var(--rule);background:#F4F6F7}
+.s-no_prazo{border-left-color:var(--ok)} .s-no_prazo .sit{color:var(--ok)}
+.s-atencao{border-left-color:var(--warn)} .s-atencao .sit{color:var(--warn)}
+.s-vence_hoje{border-left-color:var(--today)} .s-vence_hoje .sit{color:var(--today)}
+.s-atrasada{border-left-color:var(--late);background:#FEFAFA} .s-atrasada .sit{color:var(--late)}
+.s-encerrada{border-left-color:var(--done);opacity:.7} .s-encerrada .sit{color:var(--done)}
+.sit{font-weight:600;font-size:13px}
+.just{border-left:2px solid var(--copper);background:#FBF7F2;padding:9px 12px;margin-top:11px;font-size:13.5px}
+.just .eyebrow{margin-bottom:3px}
+.just-item{padding:5px 0;border-top:1px dotted #DCCDBA}
+.just-item:first-of-type{border-top:none}
+
+/* ---- diversos ---- */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--rule);margin-bottom:20px}
+.tab{background:none;border:none;border-bottom:2px solid transparent;border-radius:0;padding:9px 15px;color:var(--ink2);font-weight:500}
+.tab.on{color:var(--steel);border-bottom-color:var(--copper)}
+.filtros{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.filtros select{width:auto;min-width:150px}
+.vazio{text-align:center;padding:38px 20px;color:var(--ink2);border:1px dashed var(--rule);border-radius:4px}
+.vazio p{margin-top:5px;font-size:14px}
+.aviso{padding:11px 14px;border-radius:3px;font-size:14px;margin-bottom:14px}
+.aviso-err{background:#FCEFEF;color:#7A2020;border:1px solid #EFCDCD}
+.aviso-ok{background:#EAF5F1;color:#0B5A45;border:1px solid #C3E3D8}
+.rt-item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--done);border-radius:3px;padding:11px 14px;margin-bottom:8px}
+.rt-pos{font-family:var(--mono);font-size:13px;color:var(--ink3);width:22px;flex:none;text-align:right}
+.rt-c{flex:1;min-width:0}
+.rt-c b{display:block;font-size:14.5px;font-weight:600}
+.rt-desc{display:block;font-size:13px;color:var(--ink);margin-top:1px}
+.rt-meta{display:block;font-size:12px;color:var(--ink2);margin-top:2px}
+.rt-dir{text-align:right;flex:none;min-width:132px}
+.rt-dir b{display:block;font-family:var(--mono);font-size:13.5px}
+.rt-dir span{font-size:11.5px}
+@media(max-width:640px){.rt-item{flex-wrap:wrap}.rt-dir{text-align:left;min-width:0}}
+.conflito{border:1px solid #E8D5B8;background:#FDF9F3;border-radius:3px;padding:12px 14px;margin-bottom:9px;font-size:14px}
+.comp{display:flex;gap:13px;align-items:baseline;padding:11px 0;border-bottom:1px solid var(--rule)}
+.comp:last-child{border-bottom:none}
+.comp-cor{width:3px;align-self:stretch;border-radius:2px;flex:none}
+.comp-data{font-family:var(--mono);font-size:12px;color:var(--ink2);white-space:nowrap;min-width:118px}
+/* ---- painel do vendedor ---- */
+.mtr{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:12px;margin-bottom:18px}
+.mtr div{background:var(--card);border:1px solid var(--rule);border-radius:4px;padding:14px 16px;border-top:3px solid var(--rule)}
+.mtr b{display:block;font-family:var(--mono);font-size:27px;font-weight:600;line-height:1.15}
+.mtr span{font-size:12.5px;color:var(--ink2)}
+.panorama{font-size:13px;color:var(--ink2);background:#F5F8F8;border:1px solid var(--rule);border-left:3px solid var(--steel2);border-radius:0 3px 3px 0;padding:10px 14px;margin:-6px 0 18px}
+.panorama b{font-family:var(--mono);color:var(--ink);font-weight:600}
+.form-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;background:none;border:none;border-radius:0;padding:18px 20px;font-size:16px;font-weight:600;color:var(--ink)}
+.form-toggle:hover{background:#F7F9FA}
+.form-toggle b{font-family:var(--mono);font-size:20px;color:var(--steel2);font-weight:400}
+.tl{position:relative;padding-left:100px}
+.tl:before{content:'';position:absolute;left:56px;top:14px;bottom:14px;width:2px;background:var(--rule)}
+.tl-item{position:relative;margin-bottom:14px}
+.tl-data{position:absolute;left:-100px;width:44px;text-align:right;top:12px}
+.tl-data b{display:block;font-family:var(--mono);font-size:21px;font-weight:600;line-height:1}
+.tl-data span{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2)}
+.tl-data.vazio b{font-size:15px;color:var(--ink3);font-weight:400}
+.tl-ponto{position:absolute;left:-50px;top:16px;width:13px;height:13px;border-radius:50%;background:var(--done);box-shadow:0 0 0 3px var(--card)}
+.tl-item .dem{margin-bottom:0}
+@media(max-width:520px){.tl{padding-left:76px}.tl:before{left:44px}
+  .tl-data{left:-76px;width:36px}.tl-data b{font-size:18px}
+  .tl-data span{font-size:9.5px}.tl-ponto{left:-38px}}
+
+/* ---- itens da demanda ---- */
+.itens{margin-top:12px;padding-top:12px;border-top:1px dashed var(--rule)}
+.item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #EEF2F3;font-size:13.5px}
+.item:last-of-type{border-bottom:none}
+.item input[type=checkbox]{width:auto;margin-top:3px;flex:none}
+.item-c{flex:1;min-width:0}
+.item-c b{font-weight:500;display:block}
+.item-c small{color:var(--ink2);font-size:12px;display:block;margin-top:1px}
+.item.feito .item-c b{text-decoration:line-through;color:var(--ink3)}
+.item.feito{opacity:.65}
+.item-sit{font-family:var(--mono);font-size:11px;white-space:nowrap;padding-top:2px}
+.i-atrasado{color:var(--late);font-weight:500}
+.i-vence_hoje{color:var(--today)} .i-atencao{color:var(--warn)}
+.i-no_prazo{color:var(--ok)} .i-sem_prazo,.i-concluido{color:var(--ink3)}
+.item-alerta{background:#FCEFEF;border:1px solid #EFCDCD;color:#7A2020;font-size:12px;padding:5px 9px;border-radius:2px;margin-top:6px}
+.item-add{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.item-add input,.item-add select{width:auto;flex:1;min-width:130px;font-size:13px;padding:6px 9px}
+.chip-itens{font-family:var(--mono);font-size:11px;padding:3px 8px;border-radius:2px;background:#EDF1F2;color:var(--ink2);border:1px solid var(--rule)}
+.chip-itens.alerta{background:#FCEFEF;color:#7A2020;border-color:#EFCDCD}
+
+.modal-bg{position:fixed;inset:0;background:rgba(18,26,31,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+
+/* ---- cronograma ---- */
+.gt-eixo{font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
+.gt-cab{position:relative;height:38px}
+.gt-cab .lbl{position:absolute;font-family:var(--mono);font-size:11.5px;padding:2px 8px;border-radius:2px;white-space:nowrap;border:1px solid}
+.gt-cab .lbl-aus{background:#FAEEDA;border-color:#DFC08A;color:#7A4A08}
+.gt-cab .lbl-hoje{background:var(--steel);border-color:var(--steel);color:#fff;transform:translateX(-50%)}
+.gt-corpo{position:relative}
+.gt-fundo{position:absolute;inset:0;pointer-events:none}
+.gt-ausencia{position:absolute;top:0;bottom:0;background:#FAEEDA;border-left:1px solid #DFC08A;border-right:1px solid #DFC08A}
+.gt-hoje{position:absolute;top:0;bottom:0;width:2px;background:var(--steel)}
+.gt-linha{position:relative;display:flex;align-items:center;height:60px;z-index:1;border-bottom:1px solid #E7ECEE}
+.gt-linha:nth-child(even){background:rgba(240,244,245,.6)}
+.gt-rot{width:330px;flex:none;padding:0 16px 0 4px;overflow:hidden}
+.gt-rot b{display:block;font-size:14.5px;font-weight:600;line-height:1.3}
+.gt-rot small{display:block;font-size:12px;color:var(--ink2);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gt-rot em{font-family:var(--mono);font-size:11px;color:var(--ink3);font-style:normal}
+.gt-trilha{flex:1;position:relative;height:26px}
+.gt-barra{position:absolute;top:4px;height:18px;border-radius:3px;min-width:6px;cursor:pointer}
+.gt-barra.conflito{outline:2px solid var(--late);outline-offset:2px}
+.gt-data{position:absolute;top:4px;font-family:var(--mono);font-size:12.5px;color:var(--ink);white-space:nowrap;font-weight:500}
+.gt-eixo{position:relative;height:22px;display:block;border-bottom:1px solid var(--rule);padding-bottom:0;margin-bottom:0}
+.gt-eixo span{position:absolute;transform:translateX(-50%);white-space:nowrap;top:0}
+.gt-grade{position:absolute;top:0;bottom:0;width:1px;background:#E9EEEF}
+.gt-resumo{position:relative;height:52px;border-bottom:1px solid var(--rule);margin-bottom:6px}
+.gt-marca{position:absolute;transform:translateX(-50%);font-family:var(--mono);font-size:10.5px;color:#fff;padding:2px 6px;border-radius:2px;white-space:nowrap;cursor:default}
+.gt-caret{background:none;border:none;padding:0 8px 0 0;color:var(--ink3);font-size:11px;font-family:var(--mono);cursor:pointer;flex:none}
+.gt-caret:hover{color:var(--steel)}
+.gt-linha.sub{height:34px;background:rgba(240,244,245,.5)}
+.gt-linha.sub .gt-rot{padding-left:18px;display:flex;align-items:center;gap:7px}
+.gt-linha.sub .gt-rot input[type=checkbox]{width:16px;height:16px;flex:none;margin:0}
+.gt-linha.sub .gt-rot .txt{font-size:12.5px;line-height:1.25;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.gt-linha.sub.feito .gt-rot .txt{text-decoration:line-through;color:var(--ink3)}
+.gt-barra.sub{height:6px;top:10px;border-radius:3px}
+.gt-ponto{position:absolute;top:8px;width:9px;height:9px;border-radius:50%;margin-left:-4px}
+.gt-marco{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--steel2);opacity:.5}
+.gt-data.sub{font-size:11.5px;color:var(--ink2);top:7px;font-weight:400}
+
+/* ---- avatar ---- */
+.av{border-radius:50%;object-fit:cover;flex:none;display:inline-block;vertical-align:middle;background:var(--rule)}
+.av-txt{display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:600;line-height:1}
+.av-btn{border:none;background:none;padding:0;cursor:pointer;border-radius:50%;flex:none}
+.av-btn:hover{box-shadow:0 0 0 2px var(--copper)}
+
+.gt-vend{display:block;font-size:11px;color:var(--ink3);font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gt-alerta{color:var(--late);font-size:12px;font-family:var(--mono);font-weight:500}
+.legenda{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--ink2);margin-top:16px;padding-top:13px;border-top:1px solid var(--rule)}
+.legenda i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.s-aguardando_prazo{border-left-color:var(--steel2);background:#F6F9FA}
+.s-aguardando_prazo .sit{color:var(--steel2)}
+
+/* ---- calendário mensal ---- */
+.cal-topo{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.cal-topo h2{min-width:190px;text-transform:capitalize}
+.cal-sem{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;margin-bottom:1px}
+.cal-sem div{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);text-align:center;padding:7px 0}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:3px;overflow:hidden}
+.cal-dia{background:#fff;min-height:132px;padding:7px 8px}
+.cal-dia.fora{background:#F7F9F9}
+.cal-num{font-family:var(--mono);font-size:12px;color:var(--ink2);margin-bottom:5px;display:inline-block}
+.cal-dia.fora .cal-num{color:#B4BEC2}
+.cal-dia.hoje .cal-num{background:var(--steel);color:#fff;border-radius:2px;padding:1px 6px}
+.cal-dia.feriado{background:#FBF7F2}
+.cal-ev{font-size:12px;line-height:1.35;padding:4px 6px;border-radius:2px;margin-bottom:4px;border-left:3px solid;background:#F4F6F7;color:var(--ink)}
+.cal-ev b{display:block;font-weight:600;font-size:12px}
+.cal-ev span{color:var(--ink2);font-size:11px}
+.cal-ev.mask{background:#F1F3F4;color:var(--ink2);font-style:italic}
+.cal-prazo{font-size:11.5px;padding:3px 6px;border-radius:2px;margin-bottom:4px;font-family:var(--mono);border:1px dashed}
+@media(max-width:820px){.cal-dia{min-height:96px}.cal-ev b{font-size:11px}.gt-rot{width:170px}}
+.modal{background:#fff;border-radius:4px;padding:24px;max-width:460px;width:100%;max-height:88vh;overflow:auto}
+@media(max-width:640px){.row2{grid-template-columns:1fr}.bar-in{height:auto;padding:10px 0;flex-wrap:wrap;gap:10px}}
+@media(prefers-reduced-motion:reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="tela-login" class="login-wrap">
+  <div class="login">
+    <div class="login-mark">Güntner <span>·</span> Engenharia de Aplicação</div>
+    <h1>Agenda de demandas</h1>
+    <div class="card">
+      <div class="tabs" style="margin-bottom:18px">
+        <button class="tab on" data-modo="entrar">Entrar</button>
+        <button class="tab" data-modo="criar">Criar conta</button>
+      </div>
+      <div id="login-aviso"></div>
+
+      <div class="field hidden" id="f-nome">
+        <label for="in-nome">Nome completo</label>
+        <input id="in-nome" autocomplete="name" placeholder="Como você quer aparecer na agenda">
+      </div>
+      <div class="field">
+        <label for="in-email">E-mail corporativo</label>
+        <input id="in-email" type="email" autocomplete="username" placeholder="nome.sobrenome@empresa.com">
+      </div>
+      <div class="field">
+        <label for="in-senha">Senha</label>
+        <input id="in-senha" type="password" autocomplete="current-password">
+      </div>
+      <div class="field hidden" id="f-senha2">
+        <label for="in-senha2">Repita a senha</label>
+        <input id="in-senha2" type="password" autocomplete="new-password">
+      </div>
+
+      <button id="btn-entrar" class="btn" style="width:100%">Entrar</button>
+      <button id="btn-criar" class="btn hidden" style="width:100%">Criar conta</button>
+
+      <div style="margin-top:14px;text-align:center" id="linha-esqueci">
+        <button id="btn-esqueci" class="btn-link">Esqueci minha senha</button>
+      </div>
+    </div>
+    <p style="font-size:13px;color:var(--ink2);text-align:center">
+      Utilize seu e-mail corporativo para cadastrar e entrar.<br>
+      Dúvidas? Fale com Jordan pelo
+      <a href="https://wa.me/5554991837426" target="_blank" rel="noopener">WhatsApp (54) 99183-7426</a>.
+    </p>
+  </div>
+</div>
+
+<!-- ===================== APLICAÇÃO ===================== -->
+<div id="tela-app" class="hidden">
+  <header class="bar">
+    <div class="bar-in">
+      <div class="brand">Güntner <span>·</span> Agenda</div>
+      <div class="bar-sp"></div>
+      <div class="who"><b id="me-nome"></b><span id="me-papel"></span></div>
+      <button id="me-avatar" class="av-btn" title="Trocar minha foto"></button>
+      <button id="btn-tg" class="btn-2 btn-sm" style="color:#E8EDEF;border-color:#3A5C6B">Telegram</button>
+      <button id="btn-senha" class="btn-2 btn-sm" style="color:#E8EDEF;border-color:#3A5C6B">Senha</button>
+      <button id="btn-sair" class="btn-2 btn-sm" style="color:#E8EDEF;border-color:#3A5C6B">Sair</button>
+    </div>
+  </header>
+  <main>
+    <div id="app-aviso"></div>
+
+    <!-- ---------- VENDEDOR ---------- -->
+    <div id="v-area" class="hidden">
+      <div class="mtr" id="v-metricas"></div>
+      <div class="panorama" id="v-panorama"></div>
+
+      <div class="card" style="padding:0">
+        <button id="btn-abrir-form" class="form-toggle">
+          <span>Nova solicitação</span><b id="form-sinal">+</b>
+        </button>
+        <div id="form-corpo" style="padding:0 20px 20px" class="hidden">
+          <div class="row2">
+            <div class="field">
+              <label for="v-tipo">Tipo de cotação</label>
+              <select id="v-tipo"></select>
+            </div>
+            <div class="field">
+              <label for="v-cliente">Cliente</label>
+              <input id="v-cliente" placeholder="Razão social ou nome usual">
+            </div>
+          </div>
+          <div class="field">
+            <label for="v-titulo">Resumo da demanda</label>
+            <input id="v-titulo" placeholder="Ex.: Chiller para sala de maturação — 120 TR">
+          </div>
+          <div class="field">
+            <label for="v-desc">Detalhamento técnico</label>
+            <textarea id="v-desc" placeholder="Capacidade, fluido, temperaturas de trabalho, condições do local, prazo do cliente, concorrência. Quanto mais completo, menos idas e vindas."></textarea>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="v-contato">Contato no cliente <span style="font-weight:400">(opcional)</span></label>
+              <input id="v-contato" placeholder="Nome, telefone ou e-mail">
+            </div>
+            <div class="field" style="display:flex;align-items:flex-end;padding-bottom:9px">
+              <label class="check" style="margin:0">
+                <input type="checkbox" id="v-urgente">
+                <span>Urgente — avisa a equipe na hora</span>
+              </label>
+            </div>
+          </div>
+          <div class="eyebrow" id="v-prazo-dica" style="margin-bottom:12px"></div>
+          <button id="btn-enviar" class="btn">Enviar solicitação</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><h2>Minhas solicitações</h2>
+          <div class="eyebrow" id="v-contagem"></div></div>
+        <div id="v-lista"></div>
+      </div>
+    </div>
+
+    <!-- ---------- EDITOR ---------- -->
+    <div id="e-area" class="hidden">
+      <div class="tabs">
+        <button class="tab on" data-aba="fila">Fila de demandas</button>
+        <button class="tab" data-aba="cronograma">Cronograma</button>
+        <button class="tab" data-aba="agenda">Agenda do setor</button>
+        <button class="tab" data-aba="retornos">Retornos de fornecedor</button>
+        <button class="tab" data-aba="conflitos">Conflitos de prazo</button>
+      </div>
+
+      <div id="aba-fila">
+        <div class="filtros">
+          <select id="f-status">
+            <option value="ativas">Em andamento</option>
+            <option value="todas">Todas</option>
+            <option value="aberta">Aberta</option>
+            <option value="em_analise">Em análise</option>
+            <option value="em_cotacao">Em cotação</option>
+            <option value="proposta_enviada">Proposta enviada</option>
+            <option value="concluida">Concluída</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+          <span class="eyebrow" id="e-contagem"></span>
+        </div>
+        <div id="e-lista"></div>
+      </div>
+
+      <div id="aba-cronograma" class="hidden">
+        <div class="card">
+          <div class="card-h"><h2>Aguardando definição de prazo</h2>
+            <div class="eyebrow" id="cr-pendentes"></div></div>
+          <div id="cr-fila"></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h2>Cronograma</h2>
+            <select id="cr-modo" style="width:auto;margin-left:auto;font-size:13px;padding:5px 9px">
+              <option value="auto">Escala automática</option>
+              <option value="15">Próximos 15 dias</option>
+              <option value="30">Próximos 30 dias</option>
+              <option value="90">Próximos 90 dias</option>
+            </select></div>
+          <div id="cr-resumo"></div>
+          <div id="cr-gantt"></div>
+          <div class="legenda">
+            <span><i style="background:var(--ok)"></i>no prazo</span>
+            <span><i style="background:var(--warn)"></i>vence em breve</span>
+            <span><i style="background:var(--today)"></i>vence hoje</span>
+            <span><i style="background:var(--late)"></i>atrasada</span>
+            <span><i style="background:#FAEEDA;border:1px solid #E8D5B8"></i>ausência da equipe</span>
+            <span><i style="background:transparent;border-left:1px dashed var(--steel2);border-radius:0"></i>prazo da cotação</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="aba-agenda" class="hidden">
+        <div class="card">
+          <div class="card-h"><h2>Novo compromisso</h2>
+            <div class="eyebrow">Visível apenas ao setor</div></div>
+          <div class="row2">
+            <div class="field">
+              <label for="c-tipo">Tipo</label>
+              <select id="c-tipo"></select>
+            </div>
+            <div class="field">
+              <label for="c-titulo">Título</label>
+              <input id="c-titulo" placeholder="Ex.: Visita técnica — Tijuca Alimentos">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="c-inicio">Início</label>
+              <input id="c-inicio" type="datetime-local">
+            </div>
+            <div class="field">
+              <label for="c-fim">Fim</label>
+              <input id="c-fim" type="datetime-local">
+            </div>
+          </div>
+          <div class="field">
+            <label for="c-local">Local <span style="font-weight:400">(opcional)</span></label>
+            <input id="c-local">
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="c-privado">
+              <span>Privado — o outro editor vê apenas “Indisponível”, sem título nem detalhe</span></label>
+          </div>
+          <div class="field">
+            <label class="check"><input type="checkbox" id="c-bloqueia" checked>
+              <span>Impede trabalhar — entra no alerta de conflito de prazo</span></label>
+          </div>
+          <div class="field" style="max-width:280px">
+            <label for="c-aviso">Lembrete no Telegram</label>
+            <select id="c-aviso">
+              <option value="">Sem lembrete</option>
+              <option value="15">15 minutos antes</option>
+              <option value="30">30 minutos antes</option>
+              <option value="60">1 hora antes</option>
+              <option value="120">2 horas antes</option>
+              <option value="1440">1 dia antes</option>
+            </select>
+          </div>
+          <button id="btn-comp" class="btn">Adicionar à agenda</button>
+        </div>
+        <div class="card">
+          <div class="cal-topo">
+            <button id="cal-ant" class="btn-2 btn-sm">‹ Anterior</button>
+            <h2 id="cal-titulo"></h2>
+            <button id="cal-prox" class="btn-2 btn-sm">Próximo ›</button>
+            <button id="cal-hoje" class="btn-link" style="margin-left:auto">Voltar para hoje</button>
+          </div>
+          <div class="cal-sem">
+            <div>dom</div><div>seg</div><div>ter</div><div>qua</div>
+            <div>qui</div><div>sex</div><div>sáb</div>
+          </div>
+          <div class="cal-grid" id="e-agenda"></div>
+          <div class="legenda">
+            <span><i style="background:#B4B2A9"></i>compromisso do setor</span>
+            <span><i style="background:transparent;border:1px dashed var(--late)"></i>prazo de cotação</span>
+            <span><i style="background:#FBF7F2;border:1px solid var(--rule)"></i>feriado</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="aba-retornos" class="hidden">
+        <div class="card">
+          <div class="card-h"><h2>Fila de retornos de fornecedor</h2>
+            <div class="eyebrow" id="rt-contagem"></div></div>
+          <div id="e-retornos"></div>
+        </div>
+      </div>
+
+      <div id="aba-conflitos" class="hidden">
+        <div class="card">
+          <div class="card-h"><h2>Prazos em conflito</h2>
+            <div class="eyebrow">Cotações vencendo durante ausência</div></div>
+          <div id="e-conflitos"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="modal-slot"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ================= CONFIGURAÇÃO ================= */
+const SUPABASE_URL = 'https://alqenopbqeohdosmcsls.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_RIRm-o6B2IrdA83hvASodA_1WHksaF2';
+/* =============================================== */
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+let EU = null, TIPOS = [], TIPOS_COMP = [];
+
+const ST = {aberta:'Aberta', em_analise:'Em análise', em_cotacao:'Em cotação',
+  proposta_enviada:'Proposta enviada', concluida:'Concluída', cancelada:'Cancelada'};
+const SIT = {no_prazo:'No prazo', atencao:'Vence em breve', vence_hoje:'Vence hoje',
+  atrasada:'Atrasada', encerrada:'Encerrada', aguardando_prazo:'Aguardando prazo'};
+
+const esc = s => (s??'').toString().replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dataBR = d => d ? new Date(d+'T12:00:00').toLocaleDateString('pt-BR') : '—';
+const dtBR = d => d ? new Date(d).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',
+  hour:'2-digit',minute:'2-digit'}) : '—';
+const hoje = () => new Date().toISOString().slice(0,10);
+
+function aviso(alvo, texto, tipo){
+  const el = $(alvo);
+  if(!texto){ el.innerHTML=''; return; }
+  el.innerHTML = `<div class="aviso aviso-${tipo==='ok'?'ok':'err'}">${esc(texto)}</div>`;
+  if(tipo==='ok') setTimeout(()=>{ if(el.firstChild) el.innerHTML=''; }, 5000);
+}
+
+/* ---------------- avatar ---------------- */
+let PESSOAS = {};
+const PALETA = ['#17323F','#0E7C86','#B87333','#5C6E7A','#7A5C3F','#2F6B4F'];
+
+function iniciais(nome){
+  const p = (nome || '?').trim().split(/\s+/);
+  return ((p[0]?.[0] || '') + (p.length > 1 ? p[p.length-1][0] : '')).toUpperCase();
+}
+
+function avatar(pid, tam = 24){
+  const p = PESSOAS[pid];
+  if(!p) return '';
+  const est = `width:${tam}px;height:${tam}px`;
+  if(p.foto_url)
+    return `<img class="av" src="${esc(p.foto_url)}" alt="${esc(p.nome)}"
+      title="${esc(p.nome)}" style="${est}">`;
+  const cor = PALETA[(pid.charCodeAt(0) + pid.charCodeAt(1)) % PALETA.length];
+  return `<span class="av av-txt" title="${esc(p.nome)}"
+    style="${est};background:${cor};font-size:${Math.round(tam*0.42)}px">${
+    esc(iniciais(p.nome))}</span>`;
+}
+
+async function carregarEquipe(){
+  const {data} = await sb.rpc('equipe');
+  PESSOAS = {};
+  (data || []).forEach(p => PESSOAS[p.id] = p);
+}
+
+async function enviarFoto(arquivo){
+  if(!arquivo) return;
+  if(arquivo.size > 2 * 1024 * 1024)
+    throw new Error('A imagem precisa ter menos de 2 MB.');
+  if(!['image/jpeg','image/png','image/webp'].includes(arquivo.type))
+    throw new Error('Use JPG, PNG ou WebP.');
+
+  const caminho = `${EU.id}/avatar`;
+  const {error: e1} = await sb.storage.from('avatares')
+    .upload(caminho, arquivo, {upsert: true, contentType: arquivo.type});
+  if(e1) throw new Error(e1.message);
+
+  const {data} = sb.storage.from('avatares').getPublicUrl(caminho);
+  const url = `${data.publicUrl}?v=${Date.now()}`;
+
+  const {error: e2} = await sb.from('profiles')
+    .update({foto_url: url}).eq('id', EU.id);
+  if(e2) throw new Error(e2.message);
+
+  EU.foto_url = url;
+  await carregarEquipe();
+  desenharCabecalho();
+}
+
+function desenharCabecalho(){
+  $('me-avatar').innerHTML = avatar(EU.id, 34) || '';
+}
+
+/* ---------------- autenticação ---------------- */
+document.querySelectorAll('#tela-login .tab').forEach(t => t.onclick = () => {
+  const criar = t.dataset.modo === 'criar';
+  document.querySelectorAll('#tela-login .tab').forEach(x => x.classList.remove('on'));
+  t.classList.add('on');
+  aviso('login-aviso','');
+  $('f-nome').classList.toggle('hidden', !criar);
+  $('f-senha2').classList.toggle('hidden', !criar);
+  $('btn-entrar').classList.toggle('hidden', criar);
+  $('btn-criar').classList.toggle('hidden', !criar);
+  $('linha-esqueci').classList.toggle('hidden', criar);
+  $('in-senha').setAttribute('autocomplete', criar ? 'new-password' : 'current-password');
+});
+
+/* O banco recusa domínio não autorizado por exceção no gatilho. O Supabase
+   embrulha isso numa mensagem genérica — traduzimos para algo legível. */
+function traduzErroAuth(msg){
+  const m = (msg || '').toLowerCase();
+  if(m.includes('database error') || m.includes('unexpected_failure') ||
+     m.includes('restrito') || m.includes('autorizado'))
+    return 'Este e-mail não é aceito. Use o endereço da empresa para se cadastrar.';
+  if(m.includes('already registered') || m.includes('already been registered'))
+    return 'Já existe conta com este e-mail. Use a aba Entrar.';
+  if(m.includes('invalid login') || m.includes('invalid credentials'))
+    return 'E-mail ou senha incorretos.';
+  if(m.includes('email not confirmed'))
+    return 'Confirme seu e-mail antes de entrar. Veja o link na sua caixa de entrada.';
+  if(m.includes('password') && m.includes('6'))
+    return 'A senha precisa ter ao menos 6 caracteres.';
+  return msg;
+}
+
+$('btn-criar').onclick = async () => {
+  const nome = $('in-nome').value.trim();
+  const email = $('in-email').value.trim();
+  const s1 = $('in-senha').value, s2 = $('in-senha2').value;
+  if(!nome) return aviso('login-aviso','Informe seu nome completo.');
+  if(!email) return aviso('login-aviso','Informe seu e-mail corporativo.');
+  if(s1.length < 8) return aviso('login-aviso','Use uma senha de ao menos 8 caracteres.');
+  if(s1 !== s2) return aviso('login-aviso','As senhas não coincidem.');
+  $('btn-criar').disabled = true;
+  const {data, error} = await sb.auth.signUp({
+    email, password: s1, options: {data: {nome}, emailRedirectTo: location.href}
+  });
+  $('btn-criar').disabled = false;
+  if(error) return aviso('login-aviso', traduzErroAuth(error.message));
+  if(!data.session){
+    aviso('login-aviso',
+      'Conta criada. Enviamos um link de confirmação para o seu e-mail — '+
+      'clique nele e volte aqui para entrar.', 'ok');
+    ['in-nome','in-senha','in-senha2'].forEach(i => $(i).value = '');
+  }
+};
+
+$('btn-entrar').onclick = async () => {
+  const email = $('in-email').value.trim(), senha = $('in-senha').value;
+  if(!email || !senha) return aviso('login-aviso','Preencha e-mail e senha.');
+  $('btn-entrar').disabled = true;
+  const {error} = await sb.auth.signInWithPassword({email, password:senha});
+  $('btn-entrar').disabled = false;
+  if(error) aviso('login-aviso', traduzErroAuth(error.message));
+};
+$('in-senha').addEventListener('keydown', e => {
+  if(e.key === 'Enter') ($('btn-criar').classList.contains('hidden')
+    ? $('btn-entrar') : $('btn-criar')).click();
+});
+
+$('btn-esqueci').onclick = async () => {
+  const email = $('in-email').value.trim();
+  if(!email) return aviso('login-aviso','Digite seu e-mail primeiro.');
+  const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: location.href});
+  aviso('login-aviso', error ? error.message
+    : 'Link enviado. Confira sua caixa de entrada.', error?'err':'ok');
+};
+
+$('btn-sair').onclick = () => sb.auth.signOut();
+
+$('me-avatar').onclick = () => modal('Minha foto', `
+  <p style="font-size:13.5px;color:var(--ink2);margin-bottom:14px">
+    Ela aparece ao lado do seu nome nas tarefas e no cronograma.
+    JPG, PNG ou WebP, até 2 MB.</p>
+  <div class="field"><label for="m-foto">Escolher imagem</label>
+    <input id="m-foto" type="file" accept="image/jpeg,image/png,image/webp"></div>`,
+  async () => {
+    const f = $('m-foto').files[0];
+    if(!f) throw new Error('Escolha uma imagem.');
+    await enviarFoto(f);
+    aviso('app-aviso','Foto atualizada.','ok');
+    if(EU.papel === 'editor'){ carregarFila(); carregarCronograma(); }
+  }, 'Salvar foto');
+
+$('btn-tg').onclick = async () => {
+  const {data: cod, error} = await sb.rpc('meu_codigo_telegram');
+  if(error) return aviso('app-aviso', error.message);
+  const {data: eu} = await sb.from('profiles')
+    .select('telegram_chat_id').eq('id', EU.id).single();
+  const ligado = !!eu?.telegram_chat_id;
+  modal('Telegram', `
+    <p style="font-size:13.5px;color:var(--ink2);margin-bottom:14px">
+      ${ligado
+        ? 'Sua conta está vinculada. Você recebe os lembretes de agenda e o resumo da manhã no privado.'
+        : 'Abra a conversa com o bot no Telegram e envie o código abaixo. Depois disso você passa a receber lembretes e o resumo da manhã.'}
+    </p>
+    ${ligado ? '' : `<div style="background:#F4F6F7;border:1px solid var(--rule);
+      border-radius:3px;padding:14px;text-align:center;margin-bottom:14px">
+      <div class="eyebrow">Envie ao bot</div>
+      <div class="mono" style="font-size:22px;font-weight:600;letter-spacing:.1em;
+        margin-top:4px">/vincular ${esc(cod)}</div></div>`}
+    ${ligado ? `<div class="field"><label class="check">
+      <input type="checkbox" id="m-desligar">
+      <span>Desvincular minha conta do Telegram</span></label></div>` : ''}`,
+    async () => {
+      if(ligado && $('m-desligar')?.checked){
+        const {error: e2} = await sb.rpc('desligar_telegram');
+        if(e2) throw new Error(e2.message);
+        aviso('app-aviso','Telegram desvinculado.','ok');
+      }
+    }, ligado ? 'Salvar' : 'Entendi');
+};
+
+$('btn-senha').onclick = () => modal('Trocar senha', `
+  <div class="field"><label for="m-s1">Nova senha</label>
+    <input id="m-s1" type="password" autocomplete="new-password"></div>
+  <div class="field"><label for="m-s2">Repita a nova senha</label>
+    <input id="m-s2" type="password" autocomplete="new-password"></div>`,
+  async () => {
+    const a = $('m-s1').value, b = $('m-s2').value;
+    if(a.length < 8) throw new Error('Use ao menos 8 caracteres.');
+    if(a !== b) throw new Error('As senhas não coincidem.');
+    const {error} = await sb.auth.updateUser({password:a});
+    if(error) throw error;
+    aviso('app-aviso','Senha atualizada.','ok');
+  }, 'Salvar senha');
+
+sb.auth.onAuthStateChange((_e, sessao) => sessao ? iniciar() : mostrarLogin());
+
+function mostrarLogin(){
+  // Limpa TUDO que fica em memória: sem isso, quem entra depois herda
+  // a foto e a lista de equipe de quem saiu.
+  EU = null; PESSOAS = {}; RESUMO = {}; FORNECEDORES = [];
+  $('me-avatar').innerHTML = '';
+  $('me-nome').textContent = '';
+  $('me-papel').textContent = '';
+  ['v-lista','v-metricas','v-panorama','e-lista','cr-gantt','cr-fila',
+   'cr-resumo','e-agenda','e-retornos','e-conflitos']
+    .forEach(i => { const el = $(i); if(el) el.innerHTML = ''; });
+  $('tela-app').classList.add('hidden');
+  $('tela-login').classList.remove('hidden');
+  $('in-senha').value = '';
+}
+
+async function iniciar(){
+  const {data:{user}} = await sb.auth.getUser();
+  if(!user) return mostrarLogin();
+  const {data:perfil, error} = await sb.from('profiles')
+    .select('*').eq('id', user.id).single();
+  if(error || !perfil){
+    aviso('login-aviso','Conta sem perfil no sistema. Procure a Engenharia de Aplicação.');
+    return sb.auth.signOut();
+  }
+  EU = perfil;
+  $('tela-login').classList.add('hidden');
+  $('tela-app').classList.remove('hidden');
+  $('me-nome').textContent = perfil.nome || perfil.email;
+  $('me-papel').textContent = perfil.papel === 'editor'
+    ? 'Engenharia de Aplicação' : 'Vendas';
+
+  const {data:tipos} = await sb.from('tipos_cotacao')
+    .select('*').eq('ativo', true).order('ordem');
+  TIPOS = tipos || [];
+
+  if(perfil.papel === 'editor'){
+    $('e-area').classList.remove('hidden');
+    $('v-area').classList.add('hidden');
+    await carregarEquipe();
+    desenharCabecalho();
+    const {data:tc} = await sb.from('tipos_compromisso')
+      .select('*').eq('ativo', true).order('ordem');
+    TIPOS_COMP = tc || [];
+    $('c-tipo').innerHTML = TIPOS_COMP.map(t =>
+      `<option value="${t.id}">${esc(t.nome)}</option>`).join('');
+    carregarFila(); carregarCronograma(); carregarAgenda();
+    carregarRetornos(); carregarConflitos();
+  } else {
+    $('v-area').classList.remove('hidden');
+    $('e-area').classList.add('hidden');
+    PESSOAS = {[perfil.id]: {id: perfil.id, nome: perfil.nome || perfil.email,
+      foto_url: perfil.foto_url}};
+    desenharCabecalho();
+    $('v-tipo').innerHTML = TIPOS.map(t =>
+      `<option value="${t.id}" data-p="${t.prazo_dias}">${esc(t.nome)}</option>`).join('');
+    $('v-tipo').onchange = dicaPrazo; dicaPrazo();
+    carregarMinhas();
+  }
+}
+
+function dicaPrazo(){
+  const o = $('v-tipo').selectedOptions[0];
+  $('v-prazo-dica').textContent = o
+    ? `Prazo estimado para este tipo: ${o.dataset.p} dias úteis. A data final é confirmada pela Engenharia.`
+    : '';
+}
+
+/* ---------------- medidor de prazo ---------------- */
+function medidor(d){
+  if(d.situacao === 'aguardando_prazo'){
+    const n = d.dias_aguardando;
+    return `<div class="gauge"><i style="width:100%;background:repeating-linear-gradient(
+        90deg,#C6D2D6 0 6px,transparent 6px 12px)"></i></div>
+      <div class="gauge-lbl"><span>aberta ${dataBR(d.aberta_em.slice(0,10))}</span>
+      <span>${n ? `${n} ${n===1?'dia útil':'dias úteis'} sem prazo definido`
+        : 'aguardando definição de prazo'}</span></div>`;
+  }
+  const ini = new Date(d.aberta_em), fim = new Date(d.prazo_previsto+'T23:59:59');
+  const total = Math.max(fim - ini, 1), corrido = Date.now() - ini;
+  const cor = {no_prazo:'var(--ok)', atencao:'var(--warn)', vence_hoje:'var(--today)',
+    atrasada:'var(--late)', encerrada:'var(--done)'}[d.situacao];
+  const pct = Math.min(Math.max(corrido/total, 0), 1) * 100;
+  const excesso = d.situacao === 'atrasada' ? Math.min(d.dias_atraso * 6, 30) : 0;
+  const dir = d.situacao === 'encerrada' ? 'Encerrada'
+    : d.situacao === 'atrasada' ? `${d.dias_atraso} ${d.dias_atraso===1?'dia útil':'dias úteis'} de atraso`
+    : `entrega ${dataBR(d.prazo_previsto)}`;
+  return `<div class="gauge">
+      <i style="width:${(100-excesso)*pct/100}%;background:${cor}"></i>
+      ${excesso ? `<i class="over" style="width:${excesso}%"></i>` : ''}
+    </div>
+    <div class="gauge-lbl"><span>aberta ${dataBR(d.aberta_em.slice(0,10))}</span>
+      <span>${esc(dir)}</span></div>`;
+}
+
+function justificativas(lista){
+  if(!lista || !lista.length) return '';
+  const itens = lista.map(r => `<div class="just-item">
+      <span class="mono" style="color:var(--ink3)">${dataBR(r.prazo_anterior)} →
+      ${dataBR(r.prazo_novo)}</span><br>${esc(r.justificativa)}</div>`).join('');
+  return `<div class="just"><div class="eyebrow">Prazo reprogramado</div>${itens}</div>`;
+}
+
+function cartaoDemanda(d, reprog, editor){
+  return `<div class="dem s-${d.situacao}">
+    <div class="dem-top">
+      <span class="dem-num">${esc(d.numero)}</span>
+      <span class="dem-tit">${esc(d.titulo)}</span>
+      ${d.urgente ? '<span class="tag tag-urg">Urgente</span>' : ''}
+      <span class="tag tag-st">${esc(ST[d.status])}</span>
+      <span class="sit" style="margin-left:auto">${esc(SIT[d.situacao])}</span>
+    </div>
+    <div class="dem-meta">${esc(d.cliente)} · ${esc(d.tipo_nome)}${
+      editor ? ' · '+esc(d.vendedor_nome || d.vendedor_email) : ''}</div>
+    ${d.descricao ? `<div class="dem-meta" style="margin-top:7px;color:var(--ink)">${esc(d.descricao)}</div>` : ''}
+    ${medidor(d)}
+    ${justificativas(reprog)}
+    ${editor ? `<div class="dem-acao">
+      <select class="btn-sm" style="width:auto;padding:5px 9px" onchange="mudarStatus('${d.id}',this.value)">
+        ${Object.entries(ST).map(([k,v]) =>
+          `<option value="${k}" ${k===d.status?'selected':''}>${v}</option>`).join('')}
+      </select>
+      ${d.prazo_previsto
+        ? `<button class="btn-2 btn-sm" onclick="abrirReprogramar('${d.id}','${esc(d.numero)}','${d.prazo_previsto}')">Reprogramar prazo</button>`
+        : `<button class="btn btn-sm" onclick="abrirDefinirPrazo('${d.id}','${esc(d.numero)}',${d.tipo_prazo_sugerido||5})">Definir prazo</button>`}
+      <button class="btn-2 btn-sm" onclick="alternarItens('${d.id}')">${chipItens(d.id)}</button>
+      <span style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        ${avatar(d.responsavel_id, 24)}
+        <select class="btn-sm" style="width:auto;padding:5px 9px"
+                onchange="mudarResponsavel('${d.id}',this.value)"
+                title="Responsável pela cotação">
+          <option value="">Sem responsável</option>
+          ${Object.values(PESSOAS).map(p =>
+            `<option value="${p.id}" ${p.id === d.responsavel_id ? 'selected' : ''}>${
+              esc(p.nome)}</option>`).join('')}
+        </select>
+      </span>
+    </div>
+    <div class="itens hidden" id="itens-${d.id}"></div>` : ''}
+  </div>`;
+}
+
+/* ---------------- vendedor ---------------- */
+$('btn-enviar').onclick = async () => {
+  const dados = {
+    tipo_id: $('v-tipo').value,
+    cliente: $('v-cliente').value.trim(),
+    titulo: $('v-titulo').value.trim(),
+    descricao: $('v-desc').value.trim() || null,
+    contato_cliente: $('v-contato').value.trim() || null,
+    urgente: $('v-urgente').checked
+  };
+  if(!dados.tipo_id || !dados.cliente || !dados.titulo)
+    return aviso('app-aviso','Informe o tipo, o cliente e o resumo da demanda.');
+  $('btn-enviar').disabled = true;
+  const {data, error} = await sb.from('demandas').insert(dados).select('numero').single();
+  $('btn-enviar').disabled = false;
+  if(error) return aviso('app-aviso', error.message);
+  aviso('app-aviso', `Solicitação ${data.numero} registrada.`, 'ok');
+  ['v-cliente','v-titulo','v-desc','v-contato'].forEach(i => $(i).value = '');
+  $('v-urgente').checked = false;
+  $('form-corpo').classList.add('hidden');
+  $('form-sinal').textContent = '+';
+  carregarMinhas();
+};
+
+$('btn-abrir-form').onclick = () => {
+  const aberto = !$('form-corpo').classList.toggle('hidden');
+  $('form-sinal').textContent = aberto ? '−' : '+';
+};
+
+async function panoramaSetor(){
+  const {data, error} = await sb.rpc('panorama_setor');
+  const p = data && data[0];
+  if(error || !p) { $('v-panorama').classList.add('hidden'); return; }
+  const partes = [`<b>${p.em_andamento}</b> cotações em andamento na Engenharia`];
+  if(p.aguardando_validacao)
+    partes.push(`<b>${p.aguardando_validacao}</b> aguardando validação`);
+  if(p.concluidas_30d)
+    partes.push(`<b>${p.concluidas_30d}</b> concluídas nos últimos 30 dias`);
+  $('v-panorama').innerHTML = partes.join(' · ');
+}
+
+async function carregarMinhas(){
+  const {data, error} = await sb.from('demandas_visao').select('*');
+  if(error) return aviso('app-aviso', error.message);
+  const lista = data || [];
+
+  const conta = s => lista.filter(d => d.situacao === s).length;
+  const aguardando = conta('aguardando_prazo');
+  const atrasadas  = conta('atrasada');
+  const andamento  = lista.filter(d =>
+    ['no_prazo','atencao','vence_hoje'].includes(d.situacao)).length;
+  const entregues  = lista.filter(d => d.status === 'concluida').length;
+
+  const cartao = (n, rot, cor) => `<div style="border-top-color:${cor}">
+    <b style="color:${n ? cor : 'var(--ink3)'}">${n}</b><span>${rot}</span></div>`;
+  $('v-metricas').innerHTML =
+    cartao(aguardando, 'aguardando prazo', 'var(--steel2)') +
+    cartao(andamento, 'em andamento', 'var(--ok)') +
+    cartao(atrasadas, 'atrasadas', 'var(--late)') +
+    cartao(entregues, 'concluídas', 'var(--done)');
+
+  panoramaSetor();
+
+  const ativas = lista.filter(d => d.situacao !== 'encerrada');
+  $('v-contagem').textContent = ativas.length
+    ? `${ativas.length} em aberto` : 'nenhuma em aberto';
+
+  if(!lista.length){
+    $('v-lista').innerHTML = `<div class="vazio"><b>Nenhuma solicitação ainda</b>
+      <p>Abra a primeira pelo botão acima. Você acompanha tudo por aqui.</p></div>`;
+    $('form-corpo').classList.remove('hidden');
+    $('form-sinal').textContent = '−';
+    return;
+  }
+
+  // Ordem: sem prazo primeiro, depois por data de entrega.
+  const ordem = {aguardando_prazo:0, atrasada:1, vence_hoje:2,
+    atencao:3, no_prazo:4, encerrada:5};
+  lista.sort((a, b) =>
+    (ordem[a.situacao] - ordem[b.situacao]) ||
+    ((a.prazo_previsto || '9999') < (b.prazo_previsto || '9999') ? -1 : 1));
+
+  const {data: reps} = await sb.from('reprogramacoes').select('*').order('criado_em');
+  const porDem = {};
+  (reps || []).forEach(r => (porDem[r.demanda_id] ??= []).push(r));
+
+  const cores = {no_prazo:'var(--ok)', atencao:'var(--warn)',
+    vence_hoje:'var(--today)', atrasada:'var(--late)',
+    encerrada:'var(--done)', aguardando_prazo:'var(--steel2)'};
+  const MES = ['jan','fev','mar','abr','mai','jun',
+    'jul','ago','set','out','nov','dez'];
+
+  $('v-lista').innerHTML = '<div class="tl">' + lista.map(d => {
+    let badge;
+    if(d.prazo_previsto){
+      const p = new Date(d.prazo_previsto + 'T12:00:00');
+      badge = `<div class="tl-data"><b>${p.getDate()}</b>
+        <span>${MES[p.getMonth()]}</span></div>`;
+    } else {
+      badge = `<div class="tl-data vazio"><b>—</b><span>sem data</span></div>`;
+    }
+    return `<div class="tl-item">
+      ${badge}
+      <div class="tl-ponto" style="background:${cores[d.situacao]}"></div>
+      ${cartaoDemanda(d, porDem[d.id], false)}
+    </div>`;
+  }).join('') + '</div>';
+}
+
+/* ---------------- editor ---------------- */
+document.querySelectorAll('#e-area .tab').forEach(t => t.onclick = () => {
+  document.querySelectorAll('#e-area .tab').forEach(x => x.classList.remove('on'));
+  t.classList.add('on');
+  ['fila','cronograma','agenda','retornos','conflitos'].forEach(a =>
+    $('aba-'+a).classList.toggle('hidden', a !== t.dataset.aba));
+});
+
+$('f-status').onchange = carregarFila;
+
+/* ---------------- itens da demanda ---------------- */
+let RESUMO = {}, FORNECEDORES = [];
+
+function chipItens(id){
+  const r = RESUMO[id];
+  if(!r || !r.total) return 'Itens';
+  const cls = r.atrasados ? 'alerta' : '';
+  return `<span class="chip-itens ${cls}">${r.concluidos}/${r.total}${
+    r.atrasados ? ` · ${r.atrasados} vencido(s)` : ''}</span>`;
+}
+
+async function carregarResumoItens(){
+  const [{data: res}, {data: forn}] = await Promise.all([
+    sb.from('itens_resumo').select('*'),
+    sb.rpc('fornecedores_usados'),
+  ]);
+  RESUMO = {};
+  (res || []).forEach(r => RESUMO[r.demanda_id] = r);
+  FORNECEDORES = (forn || []).map(f => f.nome);
+}
+
+window.alternarItens = async (id) => {
+  const el = $('itens-' + id);
+  if(!el.classList.contains('hidden')){ el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  await desenharItens(id);
+};
+
+async function desenharItens(id){
+  const el = $('itens-' + id);
+  if(!el) return;
+  const {data, error} = await sb.from('itens_visao').select('*')
+    .eq('demanda_id', id).order('ordem').order('criado_em');
+  if(error) return aviso('app-aviso', error.message);
+
+  const SIT_I = {atrasado:'vencido', vence_hoje:'hoje', atencao:'em breve',
+    no_prazo:'no prazo', sem_prazo:'sem prazo', concluido:'ok'};
+
+  const linhas = (data || []).map(i => {
+    const feito = !!i.concluido_em;
+    const meta = [];
+    if(i.tipo === 'fornecedor') meta.push(esc(i.fornecedor));
+    if(i.inicio || i.prazo_retorno){
+      meta.push(`${i.inicio ? dataBR(i.inicio) : '—'} → ${
+        i.prazo_retorno ? dataBR(i.prazo_retorno) : 'sem prazo'}`);
+    }
+    if(i.recebido_em) meta.push(`recebido ${dataBR(i.recebido_em)}`);
+    if(i.responsavel) meta.push(esc(i.responsavel));
+    return `<div class="item ${feito ? 'feito' : ''}">
+      <input type="checkbox" ${feito ? 'checked' : ''}
+        onchange="concluirItem('${i.id}','${id}',this.checked)"
+        aria-label="Concluir item">
+      ${avatar(i.responsavel_id, 26)}
+      <span class="item-c">
+        <b>${esc(i.descricao)}</b>
+        <small>${meta.join(' · ')}</small>
+        ${i.retorno_apos_entrega ? `<span class="item-alerta">
+          Retorno prometido para depois do prazo da cotação.</span>` : ''}
+      </span>
+      <span class="item-sit i-${i.situacao}">${
+        feito ? '' : SIT_I[i.situacao]}${
+        i.dias_atraso ? ` ${i.dias_atraso}d` : ''}</span>
+      <button class="btn-link" style="font-size:12px"
+        onclick="removerItem('${i.id}','${id}')">remover</button>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = (linhas || `<p style="font-size:13px;color:var(--ink2)">
+      Nenhum item ainda. Registre as etapas e as solicitações a fornecedor.</p>`) +
+    `<div class="item-add">
+      <select id="ti-${id}" onchange="alternarFornecedor('${id}')">
+        <option value="interno">Tarefa interna</option>
+        <option value="fornecedor">Fornecedor</option>
+      </select>
+      <input id="td-${id}" placeholder="Descrição do item">
+      <select id="tr-${id}"></select>
+    </div>
+    <div class="item-add" id="tf-${id}">
+      <input id="tn-${id}" list="lista-fornecedores" placeholder="Fornecedor"
+             class="hidden">
+      <label style="flex:1;min-width:130px;margin:0">
+        <span style="font-size:11.5px">Início</span>
+        <input id="tb-${id}" type="date" value="${hoje()}" style="width:100%">
+      </label>
+      <label style="flex:1;min-width:130px;margin:0">
+        <span style="font-size:11.5px" id="tl-${id}">Prazo da tarefa</span>
+        <input id="tp-${id}" type="date" style="width:100%">
+      </label>
+    </div>
+    <div style="margin-top:9px">
+      <button class="btn btn-sm" onclick="adicionarItem('${id}')">Adicionar item</button>
+    </div>
+    <datalist id="lista-fornecedores">${
+      FORNECEDORES.map(f => `<option value="${esc(f)}">`).join('')}</datalist>`;
+
+  $('tr-' + id).innerHTML = Object.values(PESSOAS).map(e =>
+    `<option value="${e.id}" ${e.id === EU.id ? 'selected' : ''}>${
+      esc(e.nome || e.email)}</option>`).join('');
+}
+
+window.alternarFornecedor = (id) => {
+  const forn = $('ti-' + id).value === 'fornecedor';
+  $('tn-' + id).classList.toggle('hidden', !forn);
+  $('tl-' + id).textContent = forn ? 'Retorno prometido' : 'Prazo da tarefa';
+};
+
+window.adicionarItem = async (id) => {
+  const tipo = $('ti-' + id).value;
+  const desc = $('td-' + id).value.trim();
+  if(desc.length < 3) return aviso('app-aviso','Descreva o item com pelo menos 3 letras.');
+  const ini = $('tb-' + id).value || hoje();
+  const fim = $('tp-' + id).value || null;
+  if(fim && fim < ini)
+    return aviso('app-aviso','O prazo não pode ser anterior ao início.');
+  const dados = {demanda_id: id, tipo, descricao: desc,
+    responsavel_id: $('tr-' + id).value || null,
+    inicio: ini, prazo_retorno: fim};
+  if(tipo === 'fornecedor'){
+    const nome = $('tn-' + id).value.trim();
+    if(!nome) return aviso('app-aviso','Informe o fornecedor.');
+    dados.fornecedor = nome;
+    dados.enviado_em = ini;
+  }
+  const {error} = await sb.from('itens').insert(dados);
+  if(error) return aviso('app-aviso', error.message);
+  await carregarResumoItens();
+  await desenharItens(id);
+  carregarRetornos(); carregarCronograma();
+};
+
+window.concluirItem = async (itemId, demandaId, feito) => {
+  const patch = feito
+    ? {concluido_em: new Date().toISOString(), recebido_em: hoje()}
+    : {concluido_em: null, recebido_em: null};
+  const {error} = await sb.from('itens').update(patch).eq('id', itemId);
+  if(error) return aviso('app-aviso', error.message);
+  await carregarResumoItens();
+  await desenharItens(demandaId);
+  carregarRetornos();
+};
+
+window.removerItem = async (itemId, demandaId) => {
+  const {error} = await sb.from('itens').delete().eq('id', itemId);
+  if(error) return aviso('app-aviso', error.message);
+  await carregarResumoItens();
+  await desenharItens(demandaId);
+  carregarRetornos();
+};
+
+window.alternarSub = (id) => {
+  const g = $('sub-' + id), c = $('cr-' + id);
+  const aberto = g.classList.toggle('hidden');
+  c.textContent = (aberto ? '▸ ' : '▾ ') + c.textContent.replace(/[▸▾]\s*/,'');
+};
+
+window.concluirItemCronograma = async (itemId, feito) => {
+  const patch = feito
+    ? {concluido_em: new Date().toISOString(), recebido_em: hoje()}
+    : {concluido_em: null, recebido_em: null};
+  const {error} = await sb.from('itens').update(patch).eq('id', itemId);
+  if(error) return aviso('app-aviso', error.message);
+  await carregarResumoItens();
+  carregarCronograma(); carregarRetornos();
+};
+
+async function carregarRetornos(){
+  const {data, error} = await sb.rpc('retornos_pendentes');
+  if(error) return;
+  const fila = data || [];
+  const atrasados = fila.filter(r => r.situacao === 'atrasado').length;
+  $('rt-contagem').textContent = fila.length
+    ? `${fila.length} pendente(s)${atrasados ? ` · ${atrasados} vencido(s)` : ''}`
+    : 'nenhum';
+
+  if(!fila.length){
+    $('e-retornos').innerHTML = `<div class="vazio"><b>Nenhum retorno pendente</b>
+      <p>Toda solicitação enviada a fornecedor já voltou.</p></div>`;
+    return;
+  }
+
+  const COR = {atrasado:'var(--late)', vence_hoje:'var(--today)',
+    atencao:'var(--warn)', no_prazo:'var(--ok)', sem_prazo:'var(--ink3)'};
+
+  // Ordenada do mais urgente ao mais distante: é a ordem de cobrança.
+  $('e-retornos').innerHTML = fila.map((r, i) => {
+    const cor = COR[r.situacao];
+    const quando =
+      r.situacao === 'atrasado'  ? `${r.dias_atraso} dia(s) útil(eis) em atraso`
+    : r.situacao === 'vence_hoje'? 'vence hoje'
+    : r.situacao === 'sem_prazo' ? 'sem prazo combinado'
+    : `faltam ${r.dias_restantes} dia(s) útil(eis)`;
+    return `<div class="rt-item" style="border-left-color:${cor}">
+      <span class="rt-pos">${i + 1}</span>
+      <span class="rt-c">
+        <b>${esc(r.fornecedor)}</b>
+        <span class="rt-desc">${esc(r.descricao)}</span>
+        <span class="rt-meta">
+          <span class="mono">${esc(r.numero)}</span> · ${esc(r.cliente)}${
+          r.demanda_prazo ? ` · cotação vence ${dataBR(r.demanda_prazo)}` : ''}
+        </span>
+      </span>
+      <span class="rt-dir">
+        <b style="color:${cor}">${r.prazo_retorno ? dataBR(r.prazo_retorno) : '—'}</b>
+        <span style="color:${cor}">${quando}</span>
+      </span>
+      ${avatar(r.responsavel_id, 28)}
+      <button class="btn-2 btn-sm" onclick="marcarRecebido('${r.item_id}')">Recebido</button>
+    </div>`;
+  }).join('');
+}
+
+window.marcarRecebido = async (itemId) => {
+  const {error} = await sb.from('itens')
+    .update({recebido_em: hoje()}).eq('id', itemId);
+  if(error) return aviso('app-aviso', error.message);
+  aviso('app-aviso','Retorno registrado.','ok');
+  await carregarResumoItens();
+  carregarRetornos(); carregarFila(); carregarCronograma();
+};
+
+
+async function carregarFila(){
+  await carregarResumoItens();
+  let q = sb.from('demandas_visao').select('*');
+  const f = $('f-status').value;
+  if(f === 'ativas') q = q.not('status','in','(concluida,cancelada)');
+  else if(f !== 'todas') q = q.eq('status', f);
+  const {data, error} = await q.order('urgente',{ascending:false}).order('prazo_previsto');
+  if(error) return aviso('app-aviso', error.message);
+  const atrasadas = (data||[]).filter(d => d.situacao === 'atrasada').length;
+  $('e-contagem').textContent = `${(data||[]).length} demanda(s)` +
+    (atrasadas ? ` · ${atrasadas} atrasada(s)` : '');
+  if(!data || !data.length){
+    $('e-lista').innerHTML = `<div class="vazio"><b>Fila vazia</b>
+      <p>Nada pendente com esse filtro.</p></div>`;
+    return;
+  }
+  const {data:reps} = await sb.from('reprogramacoes').select('*').order('criado_em');
+  const porDem = {};
+  (reps||[]).forEach(r => (porDem[r.demanda_id] ??= []).push(r));
+  $('e-lista').innerHTML = data.map(d => cartaoDemanda(d, porDem[d.id], true)).join('');
+}
+
+document.addEventListener('change', e => {
+  if(e.target && e.target.id === 'cr-modo'){
+    CR_MODO = e.target.value;
+    carregarCronograma();
+  }
+});
+
+window.mudarResponsavel = async (id, pid) => {
+  const {error} = await sb.from('demandas')
+    .update({responsavel_id: pid || null}).eq('id', id);
+  if(error) return aviso('app-aviso', error.message);
+  carregarFila(); carregarCronograma();
+};
+
+window.mudarStatus = async (id, status) => {
+  const {error} = await sb.from('demandas').update({status}).eq('id', id);
+  if(error) return aviso('app-aviso', error.message);
+  aviso('app-aviso','Situação atualizada.','ok');
+  carregarFila();
+};
+
+window.abrirDefinirPrazo = (id, numero, sugestao) => {
+  // Sugestão em dias úteis a partir de hoje, pulando fim de semana.
+  const d = new Date(); let faltam = sugestao;
+  while(faltam > 0){ d.setDate(d.getDate()+1);
+    if(d.getDay() !== 0 && d.getDay() !== 6) faltam--; }
+  const sug = d.toISOString().slice(0,10);
+  modal(`Definir prazo — ${numero}`, `
+    <p style="font-size:13.5px;color:var(--ink2);margin-bottom:14px">
+      Esta é a data que o vendedor vai ver como compromisso. Depois de
+      definida, só muda com justificativa.</p>
+    <div class="field"><label for="m-data">Prazo de entrega</label>
+      <input id="m-data" type="date" value="${sug}" min="${hoje()}"></div>
+    <p style="font-size:12.5px;color:var(--ink3)">
+      Sugestão do tipo: ${sugestao} dias úteis. Ajuste conforme a carga real.</p>`,
+    async () => {
+      if(!$('m-data').value) throw new Error('Escolha uma data.');
+      const {error} = await sb.rpc('definir_prazo', {
+        p_demanda_id: id, p_prazo: $('m-data').value });
+      if(error) throw new Error(error.message);
+      aviso('app-aviso','Prazo definido. O vendedor já enxerga a data.','ok');
+      carregarFila(); carregarCronograma(); carregarAgenda(); carregarConflitos();
+    }, 'Confirmar prazo');
+};
+
+/* ---------------- cronograma ---------------- */
+/* ---------------- cronograma ---------------- */
+let CR_MODO = 'auto';
+
+function ticksEscala(min, max){
+  const dia = 864e5, span = (max - min) / dia;
+  const passo = span <= 20 ? 1 : span <= 45 ? 3 : span <= 100 ? 7 : span <= 250 ? 15 : 30;
+  const ticks = [];
+  const d = new Date(min);
+  d.setHours(12, 0, 0, 0);
+  while(d.getTime() <= max){
+    if(d.getTime() >= min) ticks.push(new Date(d));
+    d.setDate(d.getDate() + passo);
+  }
+  return {ticks, passo};
+}
+
+function rotuloTick(d, passo){
+  const dd = String(d.getDate()).padStart(2,'0');
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  return passo >= 30 ? `${MESES[d.getMonth()].slice(0,3)}/${String(d.getFullYear()).slice(2)}`
+                     : `${dd}/${mm}`;
+}
+
+async function carregarCronograma(){
+  const iso = x => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`
+    + `-${String(x.getDate()).padStart(2,'0')}`;
+  const dt = x => new Date(x + 'T12:00:00').getTime();
+  const dia = 864e5;
+
+  const [{data: dem, error: e1}, {data: itens}] = await Promise.all([
+    sb.from('demandas_visao').select('*')
+      .not('status','in','(concluida,cancelada)').order('prazo_previsto'),
+    sb.from('itens_visao').select('*').order('inicio'),
+  ]);
+  if(e1) return aviso('app-aviso', e1.message);
+
+  const todas = dem || [];
+  const porDemanda = {};
+  (itens || []).forEach(i => (porDemanda[i.demanda_id] ??= []).push(i));
+
+  const semPrazo = todas.filter(d => !d.prazo_previsto)
+    .sort((a,b) => b.dias_aguardando - a.dias_aguardando);
+  const comPrazo = todas.filter(d => d.prazo_previsto);
+
+  $('cr-pendentes').textContent = semPrazo.length
+    ? `${semPrazo.length} pendente(s)` : 'nenhuma';
+  $('cr-fila').innerHTML = semPrazo.length
+    ? semPrazo.map(d => cartaoDemanda(d, null, true)).join('')
+    : `<div class="vazio"><b>Tudo validado</b>
+        <p>Nenhuma demanda esperando definição de prazo.</p></div>`;
+
+  if(!comPrazo.length){
+    $('cr-gantt').innerHTML = `<div class="vazio"><b>Nada agendado</b>
+      <p>Defina o prazo de uma demanda para ela aparecer aqui.</p></div>`;
+    $('cr-resumo').innerHTML = '';
+    return;
+  }
+
+  // ---- régua adaptativa ----
+  // No modo automático a escala se ajusta às datas reais: um conjunto
+  // de tarefas espremido numa semana ocupa a largura toda, e um que se
+  // espalha por meses também cabe. Nos modos fixos a janela é a mesma
+  // sempre, útil para comparar duas consultas seguidas.
+  let min, max;
+  if(CR_MODO === 'auto'){
+    const datas = [Date.now()];
+    comPrazo.forEach(d => {
+      datas.push(new Date(d.aberta_em).getTime(), dt(d.prazo_previsto));
+      (porDemanda[d.id] || []).forEach(i => {
+        if(i.inicio) datas.push(dt(i.inicio));
+        if(i.prazo_retorno) datas.push(dt(i.prazo_retorno));
+      });
+    });
+    min = Math.min(...datas); max = Math.max(...datas);
+    const folga = Math.max((max - min) * 0.06, 1.5 * dia);
+    min -= folga; max += folga;
+  } else {
+    min = Date.now() - 2 * dia;
+    max = Date.now() + Number(CR_MODO) * dia;
+  }
+
+  const span = max - min;
+  const pos = t => Math.min(Math.max((t - min) / span, 0), 1) * 100;
+  const {ticks, passo} = ticksEscala(min, max);
+
+  const eixo = ticks.map(t =>
+    `<span style="left:${pos(t.getTime())}%">${rotuloTick(t, passo)}</span>`).join('');
+  const grade = ticks.map(t =>
+    `<div class="gt-grade" style="left:${pos(t.getTime())}%"></div>`).join('');
+
+  // ---- ausências ----
+  const {data: comp} = await sb.rpc('agenda_equipe',
+    {p_de: iso(new Date(min)), p_ate: iso(new Date(max))});
+  const bloqueios = (comp || []).filter(c => c.bloqueia_agenda);
+
+  const rotulos = bloqueios.map((c, i) => {
+    const a = pos(new Date(c.inicio).getTime());
+    if(a > 96) return '';
+    return `<span class="lbl lbl-aus" style="left:${a}%;top:${i % 2 ? 20 : 2}px">
+      ${esc(c.mascarado ? 'Indisponível' : c.titulo)}</span>`;
+  }).join('');
+
+  const ausencias = bloqueios.map(c => {
+    const a = pos(new Date(c.inicio).getTime()), b = pos(new Date(c.fim).getTime());
+    if(b <= a) return '';
+    return `<div class="gt-ausencia" style="left:${a}%;width:${b-a}%"></div>`;
+  }).join('');
+
+  const cores = {no_prazo:'var(--ok)', atencao:'var(--warn)',
+    vence_hoje:'var(--today)', atrasada:'var(--late)'};
+  const coresItem = {no_prazo:'var(--ok)', atencao:'var(--warn)',
+    vence_hoje:'var(--today)', atrasado:'var(--late)',
+    concluido:'var(--done)', sem_prazo:'#A9B4B8'};
+
+  const emConflito = d => bloqueios.some(c => {
+    const p = dt(d.prazo_previsto);
+    return p >= new Date(c.inicio).getTime() && p <= new Date(c.fim).getTime();
+  });
+
+  // ---- faixa de resumo: todas as entregas na mesma régua ----
+  $('cr-resumo').innerHTML = `
+    <div class="gt-resumo" style="margin-left:330px">
+      ${grade}
+      <div class="gt-hoje" style="left:${pos(Date.now())}%"></div>
+      ${comPrazo.map((d, i) => {
+        const x = pos(dt(d.prazo_previsto));
+        return `<span class="gt-marca" style="left:${x}%;top:${i % 2 ? 22 : 4}px;
+          background:${cores[d.situacao] || 'var(--done)'}"
+          title="${esc(d.numero)} — ${esc(d.cliente)} — ${dataBR(d.prazo_previsto)}"
+          >${esc(d.numero.replace('DEM-2026-',''))}</span>`;
+      }).join('')}
+    </div>`;
+
+  // ---- linhas ----
+  const linhas = comPrazo.map(d => {
+    const a = pos(new Date(d.aberta_em).getTime());
+    const b = pos(dt(d.prazo_previsto));
+    const largura = Math.max(b - a, 1.2);
+    const conf = emConflito(d);
+    const posData = b < 86
+      ? `left:${b}%;margin-left:10px` : `right:${100-b}%;margin-right:10px`;
+    const subs = porDemanda[d.id] || [];
+
+    const linhasSub = subs.map(i => {
+      const ini = pos(dt(i.inicio || d.aberta_em.slice(0,10)));
+      const feito = !!i.concluido_em;
+      const cor = coresItem[i.situacao] || 'var(--done)';
+      const corpo = i.prazo_retorno
+        ? `<div class="gt-barra sub" style="left:${ini}%;
+             width:${Math.max(pos(dt(i.prazo_retorno)) - ini, 0.8)}%;background:${cor}"
+             title="${esc(i.descricao)}"></div>`
+        : `<div class="gt-ponto" style="left:${ini}%;background:${cor}"
+             title="${esc(i.descricao)} — sem prazo"></div>`;
+      const fp = pos(dt(i.prazo_retorno || i.fim_efetivo));
+      return `<div class="gt-linha sub ${feito ? 'feito' : ''}">
+        <div class="gt-rot">
+          <input type="checkbox" ${feito ? 'checked' : ''}
+            onchange="concluirItemCronograma('${i.id}',this.checked)"
+            aria-label="Concluir ${esc(i.descricao)}">
+          <span class="txt" title="${esc(i.descricao)}">${esc(i.descricao)}${
+            i.tipo === 'fornecedor' ? ` — ${esc(i.fornecedor)}` : ''}</span>
+          ${avatar(i.responsavel_id, 20)}
+        </div>
+        <div class="gt-trilha">
+          <div class="gt-marco" style="left:${b}%"></div>
+          ${corpo}
+          ${i.prazo_retorno ? `<span class="gt-data sub" style="${
+            fp < 88 ? `left:${fp}%;margin-left:8px` : `right:${100-fp}%;margin-right:8px`
+          }">${dataBR(i.prazo_retorno).slice(0,5)}</span>` : ''}
+        </div></div>`;
+    }).join('');
+
+    const caret = subs.length
+      ? `<button class="gt-caret" onclick="alternarSub('${d.id}')"
+           id="cr-${d.id}" aria-label="Mostrar itens">▸ ${subs.length}</button>`
+      : '<span class="gt-caret" style="visibility:hidden">▸ 0</span>';
+
+    return `<div class="gt-linha">
+      <div class="gt-rot" style="display:flex;align-items:center;gap:8px">
+        ${caret}
+        ${avatar(d.responsavel_id, 28)}
+        <span style="min-width:0;flex:1">
+          <b>${esc(d.cliente)}${conf ? ' <span class="gt-alerta">conflito</span>' : ''}</b>
+          <small><em>${esc(d.numero.replace('DEM-',''))}</em> ${esc(d.titulo)}</small>
+          <i class="gt-vend">solicitado por ${esc(d.vendedor_nome || d.vendedor_email)}</i>
+        </span>
+      </div>
+      <div class="gt-trilha">
+        <div class="gt-barra ${conf ? 'conflito' : ''}"
+             style="left:${a}%;width:${largura}%;background:${cores[d.situacao] || 'var(--done)'}"
+             title="${esc(d.titulo)} — entrega ${dataBR(d.prazo_previsto)}"
+             onclick="abrirReprogramar('${d.id}','${esc(d.numero)}','${d.prazo_previsto}')"></div>
+        <span class="gt-data" style="${posData}">${dataBR(d.prazo_previsto).slice(0,5)}</span>
+      </div></div>
+      <div class="gt-grupo hidden" id="sub-${d.id}">${linhasSub}</div>`;
+  }).join('');
+
+  $('cr-gantt').innerHTML = `
+    <div class="gt-eixo" style="margin-left:330px">${eixo}</div>
+    <div class="gt-cab" style="margin-left:330px">
+      ${rotulos}
+      <span class="lbl lbl-hoje" style="left:${pos(Date.now())}%;top:2px">hoje</span>
+    </div>
+    <div class="gt-corpo">
+      <div class="gt-fundo" style="left:330px">
+        ${grade}${ausencias}
+        <div class="gt-hoje" style="left:${pos(Date.now())}%"></div>
+      </div>
+      ${linhas}
+    </div>`;
+}
+window.abrirReprogramar = (id, numero, prazoAtual) => {
+  modal(`Reprogramar ${numero}`, `
+    <div class="field"><label for="m-data">Novo prazo</label>
+      <input id="m-data" type="date" value="${prazoAtual}" min="${hoje()}"></div>
+    <div class="field"><label for="m-just">Justificativa</label>
+      <textarea id="m-just" placeholder="O vendedor vai ler este texto. Explique o motivo em uma frase."></textarea></div>`,
+    async () => {
+      const {error} = await sb.rpc('reprogramar_demanda', {
+        p_demanda_id: id,
+        p_novo_prazo: $('m-data').value,
+        p_justificativa: $('m-just').value.trim()
+      });
+      if(error) throw new Error(error.message);
+      aviso('app-aviso','Prazo reprogramado. O vendedor já vê a justificativa.','ok');
+      carregarFila(); carregarCronograma(); carregarAgenda(); carregarConflitos();
+    }, 'Confirmar reprogramação');
+};
+
+$('btn-comp').onclick = async () => {
+  const ini = $('c-inicio').value, fim = $('c-fim').value;
+  if(!$('c-titulo').value.trim() || !ini || !fim)
+    return aviso('app-aviso','Informe título, início e fim.');
+  if(new Date(fim) <= new Date(ini))
+    return aviso('app-aviso','O fim precisa ser depois do início.');
+  const {error} = await sb.from('compromissos').insert({
+    tipo_id: $('c-tipo').value,
+    titulo: $('c-titulo').value.trim(),
+    local: $('c-local').value.trim() || null,
+    inicio: new Date(ini).toISOString(),
+    fim: new Date(fim).toISOString(),
+    privado: $('c-privado').checked,
+    bloqueia_agenda: $('c-bloqueia').checked,
+    aviso_minutos: $('c-aviso').value ? Number($('c-aviso').value) : null
+  });
+  if(error) return aviso('app-aviso', error.message);
+  aviso('app-aviso','Compromisso adicionado.','ok');
+  ['c-titulo','c-local','c-inicio','c-fim'].forEach(i => $(i).value = '');
+  $('c-privado').checked = false;
+  carregarAgenda(); carregarConflitos();
+};
+
+/* ---------------- calendário mensal ---------------- */
+let CAL_MES = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho',
+  'agosto','setembro','outubro','novembro','dezembro'];
+
+$('cal-ant').onclick  = () => { CAL_MES.setMonth(CAL_MES.getMonth()-1); carregarAgenda(); };
+$('cal-prox').onclick = () => { CAL_MES.setMonth(CAL_MES.getMonth()+1); carregarAgenda(); };
+$('cal-hoje').onclick = () => {
+  CAL_MES = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  carregarAgenda();
+};
+
+async function carregarAgenda(){
+  const ano = CAL_MES.getFullYear(), mes = CAL_MES.getMonth();
+  $('cal-titulo').textContent = `${MESES[mes]} de ${ano}`;
+
+  // A grade começa no domingo anterior ao dia 1 e cobre 6 semanas.
+  const grade = new Date(ano, mes, 1);
+  grade.setDate(grade.getDate() - grade.getDay());
+  const fimGrade = new Date(grade);
+  fimGrade.setDate(fimGrade.getDate() + 41);
+  const iso = x => `${x.getFullYear()}-${String(x.getMonth()+1).padStart(2,'0')}`
+    + `-${String(x.getDate()).padStart(2,'0')}`;
+
+  const [{data: comp, error}, {data: dem}, {data: fer}] = await Promise.all([
+    sb.rpc('agenda_equipe', {p_de: iso(grade), p_ate: iso(fimGrade)}),
+    sb.from('demandas_visao').select('numero,cliente,titulo,prazo_previsto,situacao')
+      .not('status','in','(concluida,cancelada)')
+      .gte('prazo_previsto', iso(grade)).lte('prazo_previsto', iso(fimGrade)),
+    sb.from('feriados').select('*')
+      .gte('data', iso(grade)).lte('data', iso(fimGrade)),
+  ]);
+  if(error) return aviso('app-aviso', error.message);
+
+  // Distribui cada compromisso por todos os dias que ele atravessa.
+  const porDia = {};
+  (comp || []).forEach(c => {
+    const ini = new Date(c.inicio), fim = new Date(c.fim);
+    const d = new Date(ini.getFullYear(), ini.getMonth(), ini.getDate());
+    while(d <= fim){
+      (porDia[iso(d)] ??= []).push(c);
+      d.setDate(d.getDate() + 1);
+    }
+  });
+
+  const prazos = {};
+  (dem || []).forEach(x => (prazos[x.prazo_previsto] ??= []).push(x));
+  const feriados = {};
+  (fer || []).forEach(f => feriados[f.data] = f.descricao);
+
+  const corPrazo = {no_prazo:'var(--ok)', atencao:'var(--warn)',
+    vence_hoje:'var(--today)', atrasada:'var(--late)'};
+
+  const hojeIso = iso(new Date());
+  let html = '';
+  const cursor = new Date(grade);
+
+  for(let i = 0; i < 42; i++){
+    const chave = iso(cursor);
+    const foraDoMes = cursor.getMonth() !== mes;
+    const classes = ['cal-dia'];
+    if(foraDoMes) classes.push('fora');
+    if(chave === hojeIso) classes.push('hoje');
+    if(feriados[chave]) classes.push('feriado');
+
+    const eventos = (porDia[chave] || []).map(c => {
+      const horario = c.dia_inteiro ? 'dia inteiro'
+        : new Date(c.inicio).toLocaleTimeString('pt-BR',
+            {hour:'2-digit', minute:'2-digit'});
+      return `<div class="cal-ev ${c.mascarado ? 'mask' : ''}"
+        style="border-left-color:${esc(c.cor)}">
+        <b>${esc(c.titulo)}</b>
+        <span>${esc(horario)} · ${esc(c.responsavel)}${
+          c.local ? ' · ' + esc(c.local) : ''}</span></div>`;
+    }).join('');
+
+    const entregas = (prazos[chave] || []).map(x => {
+      const cor = corPrazo[x.situacao] || 'var(--done)';
+      return `<div class="cal-prazo" style="border-color:${cor};color:${cor}"
+        title="${esc(x.titulo)}">${esc(x.numero.replace('DEM-',''))} ·
+        ${esc(x.cliente)}</div>`;
+    }).join('');
+
+    html += `<div class="${classes.join(' ')}">
+      <span class="cal-num">${cursor.getDate()}</span>
+      ${feriados[chave] ? `<div class="cal-ev" style="border-left-color:var(--copper)">
+        <b>${esc(feriados[chave])}</b></div>` : ''}
+      ${eventos}${entregas}</div>`;
+
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  $('e-agenda').innerHTML = html;
+}
+
+async function carregarConflitos(){
+  const {data, error} = await sb.rpc('prazos_em_conflito');
+  if(error) return aviso('app-aviso', error.message);
+  if(!data || !data.length){
+    $('e-conflitos').innerHTML = `<div class="vazio"><b>Nenhum conflito</b>
+      <p>Nenhuma cotação vence durante ausência registrada.</p></div>`;
+    return;
+  }
+  $('e-conflitos').innerHTML = data.map(c => `<div class="conflito">
+    <span class="mono">${esc(c.numero)}</span> — <b>${esc(c.titulo)}</b><br>
+    Vence em ${dataBR(c.prazo_previsto)}, durante ${esc(c.motivo)} de ${esc(c.responsavel)}.
+  </div>`).join('');
+}
+
+/* ---------------- modal ---------------- */
+function modal(titulo, corpo, aoConfirmar, rotulo){
+  $('modal-slot').innerHTML = `<div class="modal-bg"><div class="modal">
+    <h2 style="margin-bottom:16px">${esc(titulo)}</h2>
+    <div id="m-erro"></div>${corpo}
+    <div style="display:flex;gap:9px;margin-top:18px">
+      <button id="m-ok" class="btn">${esc(rotulo||'Confirmar')}</button>
+      <button id="m-cancel" class="btn-2">Cancelar</button>
+    </div></div></div>`;
+  const fechar = () => $('modal-slot').innerHTML = '';
+  $('m-cancel').onclick = fechar;
+  $('modal-slot').querySelector('.modal-bg').onclick = e => {
+    if(e.target.classList.contains('modal-bg')) fechar(); };
+  $('m-ok').onclick = async () => {
+    $('m-ok').disabled = true;
+    try { await aoConfirmar(); fechar(); }
+    catch(err){ aviso('m-erro', err.message); $('m-ok').disabled = false; }
+  };
+}
+</script>
+</body>
+</html>
