@@ -224,6 +224,9 @@ textarea{resize:vertical;min-height:74px}
 .cal-dia.fora .cal-num{color:#B4BEC2}
 .cal-dia.hoje .cal-num{background:var(--steel);color:#fff;border-radius:2px;padding:1px 6px}
 .cal-dia.feriado{background:#FBF7F2}
+.cal-ev[data-id]{cursor:pointer}
+.cal-ev[data-id]:hover{filter:brightness(.96);box-shadow:0 0 0 1px var(--rule)}
+.cal-ev-link::after{content:' ↗';color:var(--ink3);font-size:10px}
 .cal-ev{font-size:12px;line-height:1.35;padding:4px 6px;border-radius:2px;margin-bottom:4px;border-left:3px solid;background:#F4F6F7;color:var(--ink)}
 .cal-ev b{display:block;font-weight:600;font-size:12px}
 .cal-ev span{color:var(--ink2);font-size:11px}
@@ -427,9 +430,29 @@ textarea{resize:vertical;min-height:74px}
               <input id="c-fim" type="datetime-local">
             </div>
           </div>
-          <div class="field">
-            <label for="c-local">Local <span style="font-weight:400">(opcional)</span></label>
-            <input id="c-local">
+          <div class="row2">
+            <div class="field">
+              <label for="c-local">Local <span style="font-weight:400">(opcional)</span></label>
+              <input id="c-local">
+            </div>
+            <div class="field">
+              <label for="c-link">Link <span style="font-weight:400">(opcional)</span></label>
+              <input id="c-link" type="url" placeholder="https://...">
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label for="c-repete">Repetição</label>
+              <select id="c-repete">
+                <option value="">Não se repete</option>
+                <option value="7">Toda semana</option>
+                <option value="14">A cada duas semanas</option>
+              </select>
+            </div>
+            <div class="field hidden" id="c-ate-campo">
+              <label for="c-ate">Repetir até</label>
+              <input id="c-ate" type="date">
+            </div>
           </div>
           <div class="field">
             <label class="check"><input type="checkbox" id="c-privado">
@@ -1493,28 +1516,177 @@ window.abrirReprogramar = (id, numero, prazoAtual) => {
     }, 'Confirmar reprogramação');
 };
 
+$('c-repete').onchange = () =>
+  $('c-ate-campo').classList.toggle('hidden', !$('c-repete').value);
+
 $('btn-comp').onclick = async () => {
   const ini = $('c-inicio').value, fim = $('c-fim').value;
   if(!$('c-titulo').value.trim() || !ini || !fim)
     return aviso('app-aviso','Informe título, início e fim.');
   if(new Date(fim) <= new Date(ini))
     return aviso('app-aviso','O fim precisa ser depois do início.');
-  const {error} = await sb.from('compromissos').insert({
+
+  const link = $('c-link').value.trim();
+  if(link && !/^https?:\/\//i.test(link))
+    return aviso('app-aviso','O link precisa começar com http:// ou https://');
+
+  const base = {
     tipo_id: $('c-tipo').value,
     titulo: $('c-titulo').value.trim(),
     local: $('c-local').value.trim() || null,
-    inicio: new Date(ini).toISOString(),
-    fim: new Date(fim).toISOString(),
+    link: link || null,
     privado: $('c-privado').checked,
     bloqueia_agenda: $('c-bloqueia').checked,
     aviso_minutos: $('c-aviso').value ? Number($('c-aviso').value) : null
-  });
+  };
+
+  // Recorrência materializada: uma linha por ocorrência, todas com o
+  // mesmo serie_id. Ver o comentário na migração 12 sobre o porquê.
+  const passo = Number($('c-repete').value) || 0;
+  const linhas = [];
+  if(passo){
+    const ate = $('c-ate').value;
+    if(!ate) return aviso('app-aviso','Informe até quando o evento se repete.');
+    const limite = new Date(ate + 'T23:59:59');
+    if(limite < new Date(ini))
+      return aviso('app-aviso','A data final da repetição é anterior ao início.');
+
+    const serie = crypto.randomUUID();
+    let a = new Date(ini), b = new Date(fim);
+    while(a <= limite && linhas.length < 200){
+      linhas.push({...base, serie_id: serie,
+        inicio: a.toISOString(), fim: b.toISOString()});
+      a = new Date(a); a.setDate(a.getDate() + passo);
+      b = new Date(b); b.setDate(b.getDate() + passo);
+    }
+    if(!linhas.length) return aviso('app-aviso','Nenhuma data gerada.');
+  } else {
+    linhas.push({...base, inicio: new Date(ini).toISOString(),
+      fim: new Date(fim).toISOString()});
+  }
+
+  const {error} = await sb.from('compromissos').insert(linhas);
   if(error) return aviso('app-aviso', error.message);
-  aviso('app-aviso','Compromisso adicionado.','ok');
-  ['c-titulo','c-local','c-inicio','c-fim'].forEach(i => $(i).value = '');
+  aviso('app-aviso', linhas.length > 1
+    ? `${linhas.length} ocorrências criadas.` : 'Compromisso adicionado.', 'ok');
+  ['c-titulo','c-local','c-inicio','c-fim','c-link','c-ate'].forEach(i => $(i).value = '');
   $('c-privado').checked = false;
-  carregarAgenda(); carregarConflitos();
+  $('c-repete').value = ''; $('c-ate-campo').classList.add('hidden');
+  carregarAgenda(); carregarConflitos(); carregarCronograma();
 };
+
+/* ---------------- editar compromisso ---------------- */
+// Clique simples abre a edição; duplo clique abre o link. O timer separa
+// os dois: o simples só age se nenhum segundo clique chegar em 260 ms.
+let CLIQUE_TIMER = null;
+
+window.cliqueEvento = (id, link) => {
+  if(CLIQUE_TIMER){
+    clearTimeout(CLIQUE_TIMER); CLIQUE_TIMER = null;
+    if(link && /^https?:\/\//i.test(link))
+      window.open(link, '_blank', 'noopener,noreferrer');
+    else
+      aviso('app-aviso','Este compromisso não tem link.');
+    return;
+  }
+  CLIQUE_TIMER = setTimeout(() => {
+    CLIQUE_TIMER = null;
+    editarCompromisso(id);
+  }, 260);
+};
+
+const paraInput = (iso) => {
+  const d = new Date(iso);
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`
+       + `T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+
+async function editarCompromisso(id){
+  const {data: c, error} = await sb.from('compromissos')
+    .select('*').eq('id', id).single();
+  if(error || !c) return aviso('app-aviso','Compromisso não encontrado.');
+
+  const opcoesTipo = TIPOS_COMP.map(t =>
+    `<option value="${t.id}" ${t.id === c.tipo_id ? 'selected' : ''}>${
+      esc(t.nome)}</option>`).join('');
+  const avisos = [['','Sem lembrete'],['15','15 minutos antes'],
+    ['30','30 minutos antes'],['60','1 hora antes'],['120','2 horas antes'],
+    ['1440','1 dia antes']].map(([v,r]) =>
+    `<option value="${v}" ${String(c.aviso_minutos ?? '') === v ? 'selected' : ''}>${r}</option>`).join('');
+
+  modal('Editar compromisso', `
+    ${c.serie_id ? `<div class="aviso" style="background:#F4F6F7;
+      border:1px solid var(--rule);color:var(--ink2)">
+      Faz parte de um evento que se repete. A alteração vale só para
+      esta ocorrência.</div>` : ''}
+    <div class="field"><label for="e-titulo">Título</label>
+      <input id="e-titulo" value="${esc(c.titulo)}"></div>
+    <div class="field"><label for="e-tipo">Tipo</label>
+      <select id="e-tipo">${opcoesTipo}</select></div>
+    <div class="row2">
+      <div class="field"><label for="e-inicio">Início</label>
+        <input id="e-inicio" type="datetime-local" value="${paraInput(c.inicio)}"></div>
+      <div class="field"><label for="e-fim">Fim</label>
+        <input id="e-fim" type="datetime-local" value="${paraInput(c.fim)}"></div>
+    </div>
+    <div class="field"><label for="e-local">Local</label>
+      <input id="e-local" value="${esc(c.local || '')}"></div>
+    <div class="field"><label for="e-link">Link</label>
+      <input id="e-link" type="url" value="${esc(c.link || '')}"
+             placeholder="https://..."></div>
+    <div class="field"><label for="e-aviso">Lembrete no Telegram</label>
+      <select id="e-aviso">${avisos}</select></div>
+    <div class="field"><label class="check">
+      <input type="checkbox" id="e-privado" ${c.privado ? 'checked' : ''}>
+      <span>Privado — o outro editor vê apenas “Indisponível”</span></label></div>
+    <div class="field"><label class="check">
+      <input type="checkbox" id="e-bloqueia" ${c.bloqueia_agenda ? 'checked' : ''}>
+      <span>Impede trabalhar — entra no alerta de conflito</span></label></div>`,
+
+    async () => {
+      const ini = $('e-inicio').value, fim = $('e-fim').value;
+      if(!$('e-titulo').value.trim()) throw new Error('Informe o título.');
+      if(!ini || !fim) throw new Error('Informe início e fim.');
+      if(new Date(fim) <= new Date(ini))
+        throw new Error('O fim precisa ser depois do início.');
+      const link = $('e-link').value.trim();
+      if(link && !/^https?:\/\//i.test(link))
+        throw new Error('O link precisa começar com http:// ou https://');
+
+      const {error: e2} = await sb.from('compromissos').update({
+        tipo_id: $('e-tipo').value,
+        titulo: $('e-titulo').value.trim(),
+        local: $('e-local').value.trim() || null,
+        link: link || null,
+        inicio: new Date(ini).toISOString(),
+        fim: new Date(fim).toISOString(),
+        privado: $('e-privado').checked,
+        bloqueia_agenda: $('e-bloqueia').checked,
+        aviso_minutos: $('e-aviso').value ? Number($('e-aviso').value) : null,
+      }).eq('id', id);
+      if(e2) throw new Error(e2.message);
+      aviso('app-aviso','Compromisso atualizado.','ok');
+      carregarAgenda(); carregarConflitos(); carregarCronograma();
+    },
+    'Salvar',
+    {
+      rotulo: c.serie_id ? 'Excluir esta e as próximas' : 'Excluir',
+      acao: async () => {
+        if(c.serie_id){
+          const {data: n, error: e3} = await sb.rpc('apagar_serie',
+            {p_compromisso_id: id});
+          if(e3) throw new Error(e3.message);
+          aviso('app-aviso', `${n} ocorrência(s) removida(s).`, 'ok');
+        } else {
+          const {error: e3} = await sb.from('compromissos').delete().eq('id', id);
+          if(e3) throw new Error(e3.message);
+          aviso('app-aviso','Compromisso removido.','ok');
+        }
+        carregarAgenda(); carregarConflitos(); carregarCronograma();
+      }
+    });
+}
 
 /* ---------------- calendário mensal ---------------- */
 let CAL_MES = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -1585,11 +1757,19 @@ async function carregarAgenda(){
       const horario = c.dia_inteiro ? 'dia inteiro'
         : new Date(c.inicio).toLocaleTimeString('pt-BR',
             {hour:'2-digit', minute:'2-digit'});
-      return `<div class="cal-ev ${c.mascarado ? 'mask' : ''}"
-        style="border-left-color:${esc(c.cor)}">
+      // Só o dono edita. Compromisso de outro é apenas exibido.
+      const meu = c.eh_meu;
+      return `<div class="cal-ev ${c.mascarado ? 'mask' : ''} ${
+          c.link ? 'cal-ev-link' : ''}"
+        style="border-left-color:${esc(c.cor)}"
+        ${meu ? `data-id="${c.id}" onclick="cliqueEvento('${c.id}',
+          ${c.link ? `'${esc(c.link)}'` : 'null'})"` : ''}
+        title="${meu ? (c.link ? 'Clique para editar · duplo clique abre o link'
+                               : 'Clique para editar') : ''}">
         <b>${esc(c.titulo)}</b>
         <span>${esc(horario)} · ${esc(c.responsavel)}${
-          c.local ? ' · ' + esc(c.local) : ''}</span></div>`;
+          c.local ? ' · ' + esc(c.local) : ''}${
+          c.serie_id ? ' · repete' : ''}</span></div>`;
     }).join('');
 
     const entregas = (prazos[chave] || []).map(x => {
@@ -1626,13 +1806,15 @@ async function carregarConflitos(){
 }
 
 /* ---------------- modal ---------------- */
-function modal(titulo, corpo, aoConfirmar, rotulo){
+function modal(titulo, corpo, aoConfirmar, rotulo, excluir){
   $('modal-slot').innerHTML = `<div class="modal-bg"><div class="modal">
     <h2 style="margin-bottom:16px">${esc(titulo)}</h2>
     <div id="m-erro"></div>${corpo}
-    <div style="display:flex;gap:9px;margin-top:18px">
+    <div style="display:flex;gap:9px;margin-top:18px;align-items:center">
       <button id="m-ok" class="btn">${esc(rotulo||'Confirmar')}</button>
       <button id="m-cancel" class="btn-2">Cancelar</button>
+      ${excluir ? `<button id="m-del" class="btn-link"
+        style="margin-left:auto;color:var(--late)">${esc(excluir.rotulo)}</button>` : ''}
     </div></div></div>`;
   const fechar = () => $('modal-slot').innerHTML = '';
   $('m-cancel').onclick = fechar;
@@ -1642,6 +1824,11 @@ function modal(titulo, corpo, aoConfirmar, rotulo){
     $('m-ok').disabled = true;
     try { await aoConfirmar(); fechar(); }
     catch(err){ aviso('m-erro', err.message); $('m-ok').disabled = false; }
+  };
+  if(excluir) $('m-del').onclick = async () => {
+    $('m-del').disabled = true;
+    try { await excluir.acao(); fechar(); }
+    catch(err){ aviso('m-erro', err.message); $('m-del').disabled = false; }
   };
 }
 </script>
