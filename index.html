@@ -187,6 +187,17 @@ textarea{resize:vertical;min-height:74px}
 .gt-grade{position:absolute;top:0;bottom:0;width:1px;background:#E9EEEF}
 .gt-resumo{position:relative;height:52px;border-bottom:1px solid var(--rule);margin-bottom:6px}
 .gt-marca{position:absolute;transform:translateX(-50%);font-family:var(--mono);font-size:10.5px;color:#fff;padding:2px 6px;border-radius:2px;white-space:nowrap;cursor:default}
+.col-item{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--steel2);border-radius:3px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,background .15s}
+.col-item:hover{border-left-color:var(--copper);background:#FAFCFC}
+.col-item.ativo{border-left-color:var(--copper);background:#FBF7F2}
+.col-id{flex:1;min-width:0}
+.col-id b{display:block;font-size:15.5px;font-weight:600}
+.col-id span{display:block;font-size:12.5px;color:var(--ink2);margin-top:1px}
+.col-nums{display:flex;gap:22px;flex:none}
+.col-n{text-align:center;min-width:52px}
+.col-n b{display:block;font-family:var(--mono);font-size:20px;font-weight:600;line-height:1.1}
+.col-n span{font-size:10.5px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
+@media(max-width:640px){.col-item{flex-wrap:wrap}.col-nums{gap:16px}.col-n{min-width:44px}}
 .gt-caret{background:none;border:none;padding:0 8px 0 0;color:var(--ink3);font-size:11px;font-family:var(--mono);cursor:pointer;flex:none}
 .gt-caret:hover{color:var(--steel)}
 .gt-linha.sub{height:34px;background:rgba(240,244,245,.5)}
@@ -292,6 +303,7 @@ textarea{resize:vertical;min-height:74px}
       <div class="bar-sp"></div>
       <div class="who"><b id="me-nome"></b><span id="me-papel"></span></div>
       <button id="me-avatar" class="av-btn" title="Trocar minha foto"></button>
+      <span id="atualizado-em" class="eyebrow" style="color:#7E97A3"></span>
       <button id="btn-tg" class="btn-2 btn-sm" style="color:#E8EDEF;border-color:#3A5C6B">Telegram</button>
       <button id="btn-senha" class="btn-2 btn-sm" style="color:#E8EDEF;border-color:#3A5C6B">Senha</button>
       <button id="btn-sair" class="btn-2 btn-sm" style="color:#E8EDEF;border-color:#3A5C6B">Sair</button>
@@ -356,6 +368,7 @@ textarea{resize:vertical;min-height:74px}
     <div id="e-area" class="hidden">
       <div class="tabs">
         <button class="tab on" data-aba="fila">Fila de demandas</button>
+        <button class="tab" data-aba="equipe">Equipe</button>
         <button class="tab" data-aba="cronograma">Cronograma</button>
         <button class="tab" data-aba="agenda">Agenda do setor</button>
         <button class="tab" data-aba="retornos">Retornos de fornecedor</button>
@@ -379,6 +392,14 @@ textarea{resize:vertical;min-height:74px}
         <div id="e-lista"></div>
       </div>
 
+      <div id="aba-equipe" class="hidden">
+        <div class="card">
+          <div class="card-h"><h2>Colaboradores</h2>
+            <div class="eyebrow">Clique para filtrar o cronograma</div></div>
+          <div id="e-colaboradores"></div>
+        </div>
+      </div>
+
       <div id="aba-cronograma" class="hidden">
         <div class="card">
           <div class="card-h"><h2>Aguardando definição de prazo</h2>
@@ -387,7 +408,10 @@ textarea{resize:vertical;min-height:74px}
         </div>
         <div class="card">
           <div class="card-h"><h2>Cronograma</h2>
-            <select id="cr-modo" style="width:auto;margin-left:auto;font-size:13px;padding:5px 9px">
+            <select id="cr-pessoa" style="width:auto;margin-left:auto;font-size:13px;padding:5px 9px">
+              <option value="">Toda a equipe</option>
+            </select>
+            <select id="cr-modo" style="width:auto;margin-left:8px;font-size:13px;padding:5px 9px">
               <option value="auto">Escala automática</option>
               <option value="15">Próximos 15 dias</option>
               <option value="30">Próximos 30 dias</option>
@@ -679,19 +703,37 @@ $('btn-esqueci').onclick = async () => {
 
 $('btn-sair').onclick = () => sb.auth.signOut();
 
-$('me-avatar').onclick = () => modal('Minha foto', `
-  <p style="font-size:13.5px;color:var(--ink2);margin-bottom:14px">
-    Ela aparece ao lado do seu nome nas tarefas e no cronograma.
-    JPG, PNG ou WebP, até 2 MB.</p>
-  <div class="field"><label for="m-foto">Escolher imagem</label>
-    <input id="m-foto" type="file" accept="image/jpeg,image/png,image/webp"></div>`,
-  async () => {
-    const f = $('m-foto').files[0];
-    if(!f) throw new Error('Escolha uma imagem.');
-    await enviarFoto(f);
-    aviso('app-aviso','Foto atualizada.','ok');
-    if(EU.papel === 'editor'){ carregarFila(); carregarCronograma(); }
-  }, 'Salvar foto');
+$('me-avatar').onclick = async () => {
+  const {data: eu} = await sb.from('profiles')
+    .select('nome, funcao').eq('id', EU.id).single();
+  modal('Meu perfil', `
+    <div class="field"><label for="m-nome">Nome</label>
+      <input id="m-nome" value="${esc(eu?.nome || '')}"></div>
+    <div class="field"><label for="m-funcao">Função</label>
+      <input id="m-funcao" value="${esc(eu?.funcao || '')}"
+             placeholder="Ex.: Aplicação e Turnkey"></div>
+    <div class="field"><label for="m-foto">Foto <span style="font-weight:400">(opcional)</span></label>
+      <input id="m-foto" type="file" accept="image/jpeg,image/png,image/webp"></div>
+    <p style="font-size:12.5px;color:var(--ink3)">
+      JPG, PNG ou WebP, até 2 MB. Aparece ao lado do seu nome nas tarefas,
+      no cronograma e no painel de colaboradores.</p>`,
+    async () => {
+      const nome = $('m-nome').value.trim();
+      if(!nome) throw new Error('Informe seu nome.');
+      const {error} = await sb.from('profiles')
+        .update({nome, funcao: $('m-funcao').value.trim() || null})
+        .eq('id', EU.id);
+      if(error) throw new Error(error.message);
+      EU.nome = nome;
+      $('me-nome').textContent = nome;
+
+      const f = $('m-foto').files[0];
+      if(f) await enviarFoto(f);
+
+      aviso('app-aviso','Perfil atualizado.','ok');
+      if(EU.papel === 'editor'){ await carregarEquipe(); carregarTudo(); }
+    }, 'Salvar');
+};
 
 $('btn-tg').onclick = async () => {
   const {data: cod, error} = await sb.rpc('meu_codigo_telegram');
@@ -742,6 +784,7 @@ function mostrarLogin(){
   // Limpa TUDO que fica em memória: sem isso, quem entra depois herda
   // a foto e a lista de equipe de quem saiu.
   EU = null; PESSOAS = {}; RESUMO = {}; FORNECEDORES = [];
+  if(RELOGIO){ clearInterval(RELOGIO); RELOGIO = null; }
   $('me-avatar').innerHTML = '';
   $('me-nome').textContent = '';
   $('me-papel').textContent = '';
@@ -783,8 +826,8 @@ async function iniciar(){
     TIPOS_COMP = tc || [];
     $('c-tipo').innerHTML = TIPOS_COMP.map(t =>
       `<option value="${t.id}">${esc(t.nome)}</option>`).join('');
-    carregarFila(); carregarCronograma(); carregarAgenda();
-    carregarRetornos(); carregarConflitos();
+    carregarTudo();
+    ligarRelogio();
   } else {
     $('v-area').classList.remove('hidden');
     $('e-area').classList.add('hidden');
@@ -992,7 +1035,7 @@ async function carregarMinhas(){
 document.querySelectorAll('#e-area .tab').forEach(t => t.onclick = () => {
   document.querySelectorAll('#e-area .tab').forEach(x => x.classList.remove('on'));
   t.classList.add('on');
-  ['fila','cronograma','agenda','retornos','conflitos'].forEach(a =>
+  ['fila','equipe','cronograma','agenda','retornos','conflitos'].forEach(a =>
     $('aba-'+a).classList.toggle('hidden', a !== t.dataset.aba));
 });
 
@@ -1242,11 +1285,91 @@ async function carregarFila(){
 }
 
 document.addEventListener('change', e => {
-  if(e.target && e.target.id === 'cr-modo'){
-    CR_MODO = e.target.value;
-    carregarCronograma();
-  }
+  if(!e.target) return;
+  if(e.target.id === 'cr-modo'){ CR_MODO = e.target.value; carregarCronograma(); }
+  if(e.target.id === 'cr-pessoa'){ CR_PESSOA = e.target.value; carregarCronograma(); }
 });
+
+/* ---------------- atualização automática ----------------
+   O painel ficava parado até alguém recarregar a página: dados do
+   Luciano não apareciam na tela do Jordan. Três gatilhos resolvem:
+   a cada 3 min, ao voltar para a aba do navegador, e ao trocar de aba
+   interna. A pausa quando a aba está oculta evita consultas inúteis
+   com a página esquecida aberta a tarde toda.                        */
+let RELOGIO = null;
+
+async function carregarTudo(){
+  if(!EU || EU.papel !== 'editor') return;
+  await carregarResumoItens();
+  carregarColaboradores();
+  carregarFila();
+  carregarCronograma();
+  carregarAgenda();
+  carregarRetornos();
+  carregarConflitos();
+  const t = $('atualizado-em');
+  if(t) t.textContent = 'atualizado ' +
+    new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+}
+
+function ligarRelogio(){
+  if(RELOGIO) clearInterval(RELOGIO);
+  RELOGIO = setInterval(() => {
+    if(document.visibilityState === 'visible' && EU) carregarTudo();
+  }, 180000);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && EU) carregarTudo();
+});
+
+/* ---------------- painel de colaboradores ---------------- */
+async function carregarColaboradores(){
+  const {data, error} = await sb.rpc('colaboradores');
+  if(error) return aviso('app-aviso', error.message);
+  const lista = data || [];
+
+  // Alimenta o seletor do cronograma com as mesmas pessoas.
+  $('cr-pessoa').innerHTML = '<option value="">Toda a equipe</option>' +
+    lista.map(c => `<option value="${c.id}" ${
+      c.id === CR_PESSOA ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+
+  if(!lista.length){
+    $('e-colaboradores').innerHTML = `<div class="vazio"><b>Ninguém cadastrado</b>
+      <p>Promova alguém a editor para aparecer aqui.</p></div>`;
+    return;
+  }
+
+  const num = (v, rot, cor) => `<span class="col-n">
+    <b style="color:${v ? cor : 'var(--ink3)'}">${v}</b><span>${rot}</span></span>`;
+
+  $('e-colaboradores').innerHTML = lista.map(c => `
+    <div class="col-item ${c.id === CR_PESSOA ? 'ativo' : ''}"
+         onclick="filtrarPor('${c.id}')"
+         title="Ver o cronograma de ${esc(c.nome)}">
+      ${avatar(c.id, 46)}
+      <span class="col-id">
+        <b>${esc(c.nome)}${c.sou_eu ? ' <span style="font-weight:400;color:var(--ink3);font-size:12px">(você)</span>' : ''}</b>
+        <span>${esc(c.funcao || 'função não informada')}</span>
+      </span>
+      <span class="col-nums">
+        ${num(c.demandas_ativas, 'cotações', 'var(--steel)')}
+        ${num(c.demandas_atrasadas, 'atrasadas', 'var(--late)')}
+        ${num(c.itens_abertos, 'tarefas', 'var(--ok)')}
+        ${num(c.retornos_vencidos, 'cobranças', 'var(--warn)')}
+        ${num(c.compromissos_semana, 'agenda 7d', 'var(--ink2)')}
+      </span>
+    </div>`).join('');
+}
+
+window.filtrarPor = (id) => {
+  // Clicar de novo na mesma pessoa remove o filtro.
+  CR_PESSOA = (CR_PESSOA === id) ? '' : id;
+  $('cr-pessoa').value = CR_PESSOA;
+  carregarColaboradores();
+  carregarCronograma();
+  if(CR_PESSOA) document.querySelector('#e-area .tab[data-aba="cronograma"]').click();
+};
 
 window.mudarResponsavel = async (id, pid) => {
   const {error} = await sb.from('demandas')
@@ -1289,6 +1412,7 @@ window.abrirDefinirPrazo = (id, numero, sugestao) => {
 /* ---------------- cronograma ---------------- */
 /* ---------------- cronograma ---------------- */
 let CR_MODO = 'auto';
+let CR_PESSOA = '';
 
 function ticksEscala(min, max){
   const dia = 864e5, span = (max - min) / dia;
@@ -1323,7 +1447,8 @@ async function carregarCronograma(){
   ]);
   if(e1) return aviso('app-aviso', e1.message);
 
-  const todas = dem || [];
+  const todas = (dem || []).filter(d =>
+    !CR_PESSOA || d.responsavel_id === CR_PESSOA);
   const porDemanda = {};
   (itens || []).forEach(i => (porDemanda[i.demanda_id] ??= []).push(i));
 
