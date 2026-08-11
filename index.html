@@ -108,6 +108,17 @@ textarea{resize:vertical;min-height:74px}
 .rt-c b{display:block;font-size:14.5px;font-weight:600}
 .rt-desc{display:block;font-size:13px;color:var(--ink);margin-top:1px}
 .rt-meta{display:block;font-size:12px;color:var(--ink2);margin-top:2px}
+.fn-item{display:flex;align-items:center;gap:14px;padding:11px 4px;border-bottom:1px solid var(--rule)}
+.fn-item:last-child{border-bottom:none}
+.fn-c{flex:1;min-width:0}
+.fn-c b{display:block;font-size:14.5px;font-weight:600}
+.fn-c span{display:block;font-size:12.5px;color:var(--ink2);margin-top:1px}
+.fn-num{font-family:var(--mono);font-size:12px;color:var(--ink2);flex:none;text-align:right;min-width:96px}
+.fn-num em{font-style:normal;color:var(--late);font-weight:600}
+@media(max-width:640px){.fn-item{flex-wrap:wrap}.fn-num{text-align:left;min-width:0}}
+.rt-acoes{display:flex;align-items:center;gap:8px;flex:none}
+.btn-zap{display:inline-block;font-size:13px;font-weight:500;padding:5px 12px;border-radius:3px;background:#1D8F5B;color:#fff;text-decoration:none;white-space:nowrap}
+.btn-zap:hover{background:#17784C}
 .rt-dir{text-align:right;flex:none;min-width:132px}
 .rt-dir b{display:block;font-family:var(--mono);font-size:13.5px}
 .rt-dir span{font-size:11.5px}
@@ -401,6 +412,60 @@ textarea{resize:vertical;min-height:74px}
       </div>
 
       <div id="aba-cronograma" class="hidden">
+        <div class="card" style="padding:0">
+          <button id="btn-abrir-dem" class="form-toggle">
+            <span>Cadastrar demanda</span><b id="dem-sinal">+</b>
+          </button>
+          <div id="dem-corpo" class="hidden" style="padding:0 20px 20px">
+            <p style="font-size:13px;color:var(--ink2);margin-bottom:14px">
+              Para cotação que chegou por fora do sistema. O vendedor indicado
+              recebe o e-mail de formalização com o número de protocolo.</p>
+            <div class="row2">
+              <div class="field">
+                <label for="d-tipo">Tipo de cotação</label>
+                <select id="d-tipo"></select>
+              </div>
+              <div class="field">
+                <label for="d-vendedor">Solicitado por</label>
+                <select id="d-vendedor"></select>
+              </div>
+            </div>
+            <div class="row2">
+              <div class="field">
+                <label for="d-cliente">Cliente</label>
+                <input id="d-cliente" placeholder="Razão social ou nome usual">
+              </div>
+              <div class="field">
+                <label for="d-contato">Contato no cliente <span style="font-weight:400">(opcional)</span></label>
+                <input id="d-contato">
+              </div>
+            </div>
+            <div class="field">
+              <label for="d-titulo">Resumo da demanda</label>
+              <input id="d-titulo" placeholder="Ex.: Chiller para sala de maturação — 120 TR">
+            </div>
+            <div class="field">
+              <label for="d-desc">Detalhamento técnico</label>
+              <textarea id="d-desc" placeholder="Capacidade, fluido, temperaturas, condições do local, prazo do cliente."></textarea>
+            </div>
+            <div class="row2">
+              <div class="field">
+                <label for="d-resp">Responsável pela cotação</label>
+                <select id="d-resp"></select>
+              </div>
+              <div class="field">
+                <label for="d-prazo">Prazo de entrega <span style="font-weight:400">(opcional)</span></label>
+                <input id="d-prazo" type="date">
+              </div>
+            </div>
+            <div class="field">
+              <label class="check"><input type="checkbox" id="d-urgente">
+                <span>Urgente</span></label>
+            </div>
+            <button id="btn-cad-dem" class="btn">Cadastrar demanda</button>
+          </div>
+        </div>
+
         <div class="card">
           <div class="card-h"><h2>Aguardando definição de prazo</h2>
             <div class="eyebrow" id="cr-pendentes"></div></div>
@@ -524,6 +589,11 @@ textarea{resize:vertical;min-height:74px}
           <div class="card-h"><h2>Fila de retornos de fornecedor</h2>
             <div class="eyebrow" id="rt-contagem"></div></div>
           <div id="e-retornos"></div>
+        </div>
+        <div class="card">
+          <div class="card-h"><h2>Fornecedores</h2>
+            <button id="btn-novo-forn" class="btn btn-sm" style="margin-left:auto">Novo fornecedor</button></div>
+          <div id="e-fornecedores"></div>
         </div>
       </div>
 
@@ -1041,8 +1111,136 @@ document.querySelectorAll('#e-area .tab').forEach(t => t.onclick = () => {
 
 $('f-status').onchange = carregarFila;
 
+/* ---------------- fornecedores ---------------- */
+// Aceita o número como a pessoa digitar e devolve só dígitos com o país.
+// 10 ou 11 dígitos = Brasil, acrescenta 55.
+function normalizarTelefone(bruto){
+  let d = String(bruto || '').replace(/\D/g, '');
+  if(!d) return null;
+  if(d.length === 10 || d.length === 11) d = '55' + d;
+  return (d.length >= 12 && d.length <= 15) ? d : null;
+}
+
+function telefoneBonito(d){
+  if(!d) return '';
+  const m = String(d).match(/^55(\d{2})(\d{4,5})(\d{4})$/);
+  return m ? `(${m[1]}) ${m[2]}-${m[3]}` : '+' + d;
+}
+
+function linkWhats(tel, mensagem){
+  const d = normalizarTelefone(tel);
+  if(!d) return null;
+  return `https://wa.me/${d}` +
+    (mensagem ? `?text=${encodeURIComponent(mensagem)}` : '');
+}
+
+async function carregarFornecedores(){
+  const {data, error} = await sb.rpc('fornecedores_usados');
+  if(error) return;
+  FORN_DADOS = data || [];
+  FORNECEDORES = FORN_DADOS.map(f => f.nome);
+
+  if(!FORN_DADOS.length){
+    $('e-fornecedores').innerHTML = `<div class="vazio"><b>Nenhum fornecedor</b>
+      <p>Eles são criados sozinhos quando você cadastra um item de
+      fornecedor, ou pelo botão acima.</p></div>`;
+    return;
+  }
+
+  $('e-fornecedores').innerHTML = FORN_DADOS.map(f => {
+    const zap = linkWhats(f.telefone);
+    return `<div class="fn-item">
+      <span class="fn-c">
+        <b>${esc(f.nome)}</b>
+        <span>${f.contato ? esc(f.contato) + ' · ' : ''}${
+          f.telefone ? esc(telefoneBonito(f.telefone))
+                     : '<i style="color:var(--late)">sem telefone</i>'}${
+          f.email ? ' · ' + esc(f.email) : ''}</span>
+      </span>
+      <span class="fn-num">${f.vezes} solicitação(ões)${
+        f.pendentes ? `<br><em>${f.pendentes} em aberto</em>` : ''}</span>
+      <span class="rt-acoes">
+        ${zap ? `<a class="btn-zap" href="${zap}" target="_blank"
+             rel="noopener noreferrer">WhatsApp</a>` : ''}
+        <button class="btn-2 btn-sm" onclick="editarFornecedor('${f.id}')">Editar</button>
+      </span>
+    </div>`;
+  }).join('');
+}
+
+$('btn-novo-forn').onclick = () => modal('Novo fornecedor', `
+  <div class="field"><label for="n-nome">Nome</label>
+    <input id="n-nome" placeholder="Ex.: Danfoss"></div>
+  <div class="row2">
+    <div class="field"><label for="n-contato">Pessoa de contato</label>
+      <input id="n-contato"></div>
+    <div class="field"><label for="n-tel">WhatsApp</label>
+      <input id="n-tel" placeholder="(54) 99999-8888"></div>
+  </div>
+  <div class="field"><label for="n-email">E-mail</label>
+    <input id="n-email" type="email"></div>
+  <div class="field"><label for="n-obs">Observação</label>
+    <textarea id="n-obs" style="min-height:56px"
+      placeholder="Linha de produto, prazo típico, condições."></textarea></div>`,
+  async () => {
+    const nome = $('n-nome').value.trim();
+    if(!nome) throw new Error('Informe o nome.');
+    const bruto = $('n-tel').value.trim();
+    const tel = bruto ? normalizarTelefone(bruto) : null;
+    if(bruto && !tel) throw new Error('Número de telefone não reconhecido.');
+    const {error} = await sb.from('fornecedores').insert({
+      nome, contato: $('n-contato').value.trim() || null,
+      telefone: tel, email: $('n-email').value.trim() || null,
+      observacao: $('n-obs').value.trim() || null,
+    });
+    if(error) throw new Error(error.message.includes('duplicate')
+      ? 'Já existe fornecedor com esse nome.' : error.message);
+    aviso('app-aviso','Fornecedor cadastrado.','ok');
+    carregarFornecedores();
+  }, 'Cadastrar');
+
+window.editarFornecedor = async (id) => {
+  const {data: f, error} = await sb.from('fornecedores')
+    .select('*').eq('id', id).single();
+  if(error || !f) return aviso('app-aviso','Fornecedor não encontrado.');
+
+  modal(`Fornecedor — ${f.nome}`, `
+    <div class="field"><label for="f-nome">Nome</label>
+      <input id="f-nome" value="${esc(f.nome)}"></div>
+    <div class="row2">
+      <div class="field"><label for="f-contato">Pessoa de contato</label>
+        <input id="f-contato" value="${esc(f.contato || '')}"></div>
+      <div class="field"><label for="f-tel">WhatsApp</label>
+        <input id="f-tel" value="${esc(telefoneBonito(f.telefone))}"
+               placeholder="(54) 99999-8888"></div>
+    </div>
+    <div class="field"><label for="f-email">E-mail</label>
+      <input id="f-email" type="email" value="${esc(f.email || '')}"></div>
+    <div class="field"><label for="f-obs">Observação</label>
+      <textarea id="f-obs" style="min-height:56px">${esc(f.observacao || '')}</textarea></div>
+    <p style="font-size:12.5px;color:var(--ink3)">
+      Pode digitar o número com parênteses e traços. Se tiver DDD e 8 ou 9
+      dígitos, o país é assumido como Brasil.</p>`,
+    async () => {
+      const nome = $('f-nome').value.trim();
+      if(!nome) throw new Error('Informe o nome.');
+      const bruto = $('f-tel').value.trim();
+      const tel = bruto ? normalizarTelefone(bruto) : null;
+      if(bruto && !tel) throw new Error('Número de telefone não reconhecido.');
+      const {error: e2} = await sb.from('fornecedores').update({
+        nome, contato: $('f-contato').value.trim() || null,
+        telefone: tel, email: $('f-email').value.trim() || null,
+        observacao: $('f-obs').value.trim() || null,
+        atualizado_em: new Date().toISOString(),
+      }).eq('id', id);
+      if(e2) throw new Error(e2.message);
+      aviso('app-aviso','Fornecedor atualizado.','ok');
+      carregarRetornos(); carregarFornecedores();
+    }, 'Salvar');
+};
+
 /* ---------------- itens da demanda ---------------- */
-let RESUMO = {}, FORNECEDORES = [];
+let RESUMO = {}, FORNECEDORES = [], FORN_DADOS = [];
 
 function chipItens(id){
   const r = RESUMO[id];
@@ -1053,13 +1251,9 @@ function chipItens(id){
 }
 
 async function carregarResumoItens(){
-  const [{data: res}, {data: forn}] = await Promise.all([
-    sb.from('itens_resumo').select('*'),
-    sb.rpc('fornecedores_usados'),
-  ]);
+  const {data: res} = await sb.from('itens_resumo').select('*');
   RESUMO = {};
   (res || []).forEach(r => RESUMO[r.demanda_id] = r);
-  FORNECEDORES = (forn || []).map(f => f.nome);
 }
 
 window.alternarItens = async (id) => {
@@ -1161,7 +1355,12 @@ window.adicionarItem = async (id) => {
   if(tipo === 'fornecedor'){
     const nome = $('tn-' + id).value.trim();
     if(!nome) return aviso('app-aviso','Informe o fornecedor.');
+    // Cria a ficha na primeira vez que o nome é usado.
+    const {data: fid, error: ef} = await sb.rpc('garantir_fornecedor',
+      {p_nome: nome});
+    if(ef) return aviso('app-aviso', ef.message);
     dados.fornecedor = nome;
+    dados.fornecedor_id = fid;
     dados.enviado_em = ini;
   }
   const {error} = await sb.from('itens').insert(dados);
@@ -1232,10 +1431,22 @@ async function carregarRetornos(){
     : r.situacao === 'vence_hoje'? 'vence hoje'
     : r.situacao === 'sem_prazo' ? 'sem prazo combinado'
     : `faltam ${r.dias_restantes} dia(s) útil(eis)`;
+
+    // Mensagem pronta, para não redigitar o contexto a cada cobrança.
+    const msg = `Olá${r.contato ? ', ' + r.contato : ''}! Aqui é ${
+      EU.nome || ''} da Güntner. Estou acompanhando a solicitação "${
+      r.descricao}" (nossa referência ${r.numero})${
+      r.prazo_retorno ? `, com retorno previsto para ${dataBR(r.prazo_retorno)}`
+                      : ''}. Consegue me confirmar a previsão? Obrigado.`;
+    const zap = linkWhats(r.telefone, msg);
     return `<div class="rt-item" style="border-left-color:${cor}">
       <span class="rt-pos">${i + 1}</span>
       <span class="rt-c">
-        <b>${esc(r.fornecedor)}</b>
+        <b><a href="#" onclick="event.preventDefault();editarFornecedor('${
+          r.fornecedor_id}')" style="color:inherit;text-decoration:none;
+          border-bottom:1px dotted var(--ink3)"
+          title="Editar contato">${esc(r.fornecedor)}</a>${
+          r.contato ? ` <span style="font-weight:400;font-size:12.5px;color:var(--ink2)">· ${esc(r.contato)}</span>` : ''}</b>
         <span class="rt-desc">${esc(r.descricao)}</span>
         <span class="rt-meta">
           <span class="mono">${esc(r.numero)}</span> · ${esc(r.cliente)}${
@@ -1247,7 +1458,14 @@ async function carregarRetornos(){
         <span style="color:${cor}">${quando}</span>
       </span>
       ${avatar(r.responsavel_id, 28)}
-      <button class="btn-2 btn-sm" onclick="marcarRecebido('${r.item_id}')">Recebido</button>
+      <span class="rt-acoes">
+        ${zap
+          ? `<a class="btn-zap" href="${zap}" target="_blank" rel="noopener noreferrer"
+               title="Cobrar ${esc(r.fornecedor)} no WhatsApp">WhatsApp</a>`
+          : `<button class="btn-link" style="font-size:12px"
+               onclick="editarFornecedor('${r.fornecedor_id}')">+ telefone</button>`}
+        <button class="btn-2 btn-sm" onclick="marcarRecebido('${r.item_id}')">Recebido</button>
+      </span>
     </div>`;
   }).join('');
 }
@@ -1306,6 +1524,7 @@ async function carregarTudo(){
   carregarCronograma();
   carregarAgenda();
   carregarRetornos();
+  carregarFornecedores();
   carregarConflitos();
   const t = $('atualizado-em');
   if(t) t.textContent = 'atualizado ' +
@@ -1407,6 +1626,68 @@ window.abrirDefinirPrazo = (id, numero, sugestao) => {
       aviso('app-aviso','Prazo definido. O vendedor já enxerga a data.','ok');
       carregarFila(); carregarCronograma(); carregarAgenda(); carregarConflitos();
     }, 'Confirmar prazo');
+};
+
+/* ---------------- editor cadastra demanda ---------------- */
+$('btn-abrir-dem').onclick = async () => {
+  const aberto = !$('dem-corpo').classList.toggle('hidden');
+  $('dem-sinal').textContent = aberto ? '−' : '+';
+  if(!aberto) return;
+
+  $('d-tipo').innerHTML = TIPOS.map(t =>
+    `<option value="${t.id}" data-p="${t.prazo_dias}">${esc(t.nome)}</option>`).join('');
+
+  const {data: pessoas} = await sb.rpc('solicitantes');
+  $('d-vendedor').innerHTML = (pessoas || []).map(p =>
+    `<option value="${p.id}">${esc(p.nome)}${
+      p.papel === 'editor' ? ' (Engenharia)' : ''}</option>`).join('');
+
+  $('d-resp').innerHTML = '<option value="">Sem responsável</option>' +
+    Object.values(PESSOAS).map(p =>
+      `<option value="${p.id}" ${p.id === EU.id ? 'selected' : ''}>${
+        esc(p.nome)}</option>`).join('');
+};
+
+$('btn-cad-dem').onclick = async () => {
+  const cliente = $('d-cliente').value.trim();
+  const titulo  = $('d-titulo').value.trim();
+  const vend    = $('d-vendedor').value;
+  if(!cliente || !titulo || !vend)
+    return aviso('app-aviso','Informe cliente, resumo e quem solicitou.');
+
+  const prazo = $('d-prazo').value;
+  if(prazo && prazo < hoje())
+    return aviso('app-aviso','O prazo não pode ser anterior a hoje.');
+
+  $('btn-cad-dem').disabled = true;
+  const {data, error} = await sb.from('demandas').insert({
+    tipo_id: $('d-tipo').value,
+    vendedor_id: vend,
+    responsavel_id: $('d-resp').value || null,
+    cliente, titulo,
+    descricao: $('d-desc').value.trim() || null,
+    contato_cliente: $('d-contato').value.trim() || null,
+    urgente: $('d-urgente').checked,
+  }).select('id, numero').single();
+
+  if(error){ $('btn-cad-dem').disabled = false; return aviso('app-aviso', error.message); }
+
+  // Prazo é opcional aqui: se informado, já valida a demanda de uma vez.
+  if(prazo){
+    const {error: e2} = await sb.rpc('definir_prazo',
+      {p_demanda_id: data.id, p_prazo: prazo});
+    if(e2) aviso('app-aviso',
+      `${data.numero} criada, mas o prazo falhou: ${e2.message}`);
+  }
+  $('btn-cad-dem').disabled = false;
+
+  aviso('app-aviso', `${data.numero} cadastrada.`, 'ok');
+  ['d-cliente','d-titulo','d-desc','d-contato','d-prazo']
+    .forEach(i => $(i).value = '');
+  $('d-urgente').checked = false;
+  $('dem-corpo').classList.add('hidden');
+  $('dem-sinal').textContent = '+';
+  carregarTudo();
 };
 
 /* ---------------- cronograma ---------------- */
