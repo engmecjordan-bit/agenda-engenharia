@@ -218,6 +218,7 @@ textarea{resize:vertical;min-height:74px}
 .gt-linha.sub.feito .gt-rot .txt{text-decoration:line-through;color:var(--ink3)}
 .gt-barra.sub{height:6px;top:10px;border-radius:3px}
 .gt-ponto{position:absolute;top:8px;width:9px;height:9px;border-radius:50%;margin-left:-4px}
+.gt-itens{background:#F8FAFA;border-top:1px dashed var(--rule);padding:12px 16px 14px 20px}
 .gt-marco{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--steel2);opacity:.5}
 .gt-data.sub{font-size:11.5px;color:var(--ink2);top:7px;font-weight:400}
 
@@ -953,7 +954,8 @@ function justificativas(lista){
   return `<div class="just"><div class="eyebrow">Prazo reprogramado</div>${itens}</div>`;
 }
 
-function cartaoDemanda(d, reprog, editor){
+function cartaoDemanda(d, reprog, editor, esc0){
+  const k = (esc0 || 'f') + '-' + d.id;
   return `<div class="dem s-${d.situacao}">
     <div class="dem-top">
       <span class="dem-num">${esc(d.numero)}</span>
@@ -975,7 +977,7 @@ function cartaoDemanda(d, reprog, editor){
       ${d.prazo_previsto
         ? `<button class="btn-2 btn-sm" onclick="abrirReprogramar('${d.id}','${esc(d.numero)}','${d.prazo_previsto}')">Reprogramar prazo</button>`
         : `<button class="btn btn-sm" onclick="abrirDefinirPrazo('${d.id}','${esc(d.numero)}',${d.tipo_prazo_sugerido||5})">Definir prazo</button>`}
-      <button class="btn-2 btn-sm" onclick="alternarItens('${d.id}')">${chipItens(d.id)}</button>
+      <button class="btn-2 btn-sm" onclick="alternarItens('${k}','${d.id}')">${chipItens(d.id)}</button>
       <span style="display:flex;align-items:center;gap:6px;margin-left:auto">
         ${avatar(d.responsavel_id, 24)}
         <select class="btn-sm" style="width:auto;padding:5px 9px"
@@ -988,7 +990,7 @@ function cartaoDemanda(d, reprog, editor){
         </select>
       </span>
     </div>
-    <div class="itens hidden" id="itens-${d.id}"></div>` : ''}
+    <div class="itens hidden" id="itens-${k}"></div>` : ''}
   </div>`;
 }
 
@@ -1256,15 +1258,18 @@ async function carregarResumoItens(){
   (res || []).forEach(r => RESUMO[r.demanda_id] = r);
 }
 
-window.alternarItens = async (id) => {
-  const el = $('itens-' + id);
+window.alternarItens = async (k, id) => {
+  const el = $('itens-' + k);
   if(!el.classList.contains('hidden')){ el.classList.add('hidden'); return; }
   el.classList.remove('hidden');
-  await desenharItens(id);
+  await desenharItens(k, id);
 };
 
-async function desenharItens(id){
-  const el = $('itens-' + id);
+// k é a chave única do painel (escopo + id da demanda). Sem ela, a mesma
+// demanda aparecendo na Fila e no Cronograma geraria dois elementos com
+// o mesmo identificador, e o clique agiria sempre no primeiro.
+async function desenharItens(k, id){
+  const el = $('itens-' + k);
   if(!el) return;
   const {data, error} = await sb.from('itens_visao').select('*')
     .eq('demanda_id', id).order('ordem').order('criado_em');
@@ -1285,7 +1290,7 @@ async function desenharItens(id){
     if(i.responsavel) meta.push(esc(i.responsavel));
     return `<div class="item ${feito ? 'feito' : ''}">
       <input type="checkbox" ${feito ? 'checked' : ''}
-        onchange="concluirItem('${i.id}','${id}',this.checked)"
+        onchange="concluirItem('${i.id}','${k}','${id}',this.checked)"
         aria-label="Concluir item">
       ${avatar(i.responsavel_id, 26)}
       <span class="item-c">
@@ -1298,62 +1303,62 @@ async function desenharItens(id){
         feito ? '' : SIT_I[i.situacao]}${
         i.dias_atraso ? ` ${i.dias_atraso}d` : ''}</span>
       <button class="btn-link" style="font-size:12px"
-        onclick="removerItem('${i.id}','${id}')">remover</button>
+        onclick="removerItem('${i.id}','${k}','${id}')">remover</button>
     </div>`;
   }).join('');
 
   el.innerHTML = (linhas || `<p style="font-size:13px;color:var(--ink2)">
       Nenhum item ainda. Registre as etapas e as solicitações a fornecedor.</p>`) +
     `<div class="item-add">
-      <select id="ti-${id}" onchange="alternarFornecedor('${id}')">
+      <select id="ti-${k}" onchange="alternarFornecedor('${k}')">
         <option value="interno">Tarefa interna</option>
         <option value="fornecedor">Fornecedor</option>
       </select>
-      <input id="td-${id}" placeholder="Descrição do item">
-      <select id="tr-${id}"></select>
+      <input id="td-${k}" placeholder="Descrição do item">
+      <select id="tr-${k}"></select>
     </div>
-    <div class="item-add" id="tf-${id}">
-      <input id="tn-${id}" list="lista-fornecedores" placeholder="Fornecedor"
+    <div class="item-add" id="tf-${k}">
+      <input id="tn-${k}" list="lista-fornecedores" placeholder="Fornecedor"
              class="hidden">
       <label style="flex:1;min-width:130px;margin:0">
         <span style="font-size:11.5px">Início</span>
-        <input id="tb-${id}" type="date" value="${hoje()}" style="width:100%">
+        <input id="tb-${k}" type="date" value="${hoje()}" style="width:100%">
       </label>
       <label style="flex:1;min-width:130px;margin:0">
-        <span style="font-size:11.5px" id="tl-${id}">Prazo da tarefa</span>
-        <input id="tp-${id}" type="date" style="width:100%">
+        <span style="font-size:11.5px" id="tl-${k}">Prazo da tarefa</span>
+        <input id="tp-${k}" type="date" style="width:100%">
       </label>
     </div>
     <div style="margin-top:9px">
-      <button class="btn btn-sm" onclick="adicionarItem('${id}')">Adicionar item</button>
+      <button class="btn btn-sm" onclick="adicionarItem('${k}','${id}')">Adicionar item</button>
     </div>
     <datalist id="lista-fornecedores">${
       FORNECEDORES.map(f => `<option value="${esc(f)}">`).join('')}</datalist>`;
 
-  $('tr-' + id).innerHTML = Object.values(PESSOAS).map(e =>
+  $('tr-' + k).innerHTML = Object.values(PESSOAS).map(e =>
     `<option value="${e.id}" ${e.id === EU.id ? 'selected' : ''}>${
       esc(e.nome || e.email)}</option>`).join('');
 }
 
-window.alternarFornecedor = (id) => {
-  const forn = $('ti-' + id).value === 'fornecedor';
-  $('tn-' + id).classList.toggle('hidden', !forn);
-  $('tl-' + id).textContent = forn ? 'Retorno prometido' : 'Prazo da tarefa';
+window.alternarFornecedor = (k) => {
+  const forn = $('ti-' + k).value === 'fornecedor';
+  $('tn-' + k).classList.toggle('hidden', !forn);
+  $('tl-' + k).textContent = forn ? 'Retorno prometido' : 'Prazo da tarefa';
 };
 
-window.adicionarItem = async (id) => {
-  const tipo = $('ti-' + id).value;
-  const desc = $('td-' + id).value.trim();
+window.adicionarItem = async (k, id) => {
+  const tipo = $('ti-' + k).value;
+  const desc = $('td-' + k).value.trim();
   if(desc.length < 3) return aviso('app-aviso','Descreva o item com pelo menos 3 letras.');
-  const ini = $('tb-' + id).value || hoje();
-  const fim = $('tp-' + id).value || null;
+  const ini = $('tb-' + k).value || hoje();
+  const fim = $('tp-' + k).value || null;
   if(fim && fim < ini)
     return aviso('app-aviso','O prazo não pode ser anterior ao início.');
   const dados = {demanda_id: id, tipo, descricao: desc,
-    responsavel_id: $('tr-' + id).value || null,
+    responsavel_id: $('tr-' + k).value || null,
     inicio: ini, prazo_retorno: fim};
   if(tipo === 'fornecedor'){
-    const nome = $('tn-' + id).value.trim();
+    const nome = $('tn-' + k).value.trim();
     if(!nome) return aviso('app-aviso','Informe o fornecedor.');
     // Cria a ficha na primeira vez que o nome é usado.
     const {data: fid, error: ef} = await sb.rpc('garantir_fornecedor',
@@ -1366,33 +1371,34 @@ window.adicionarItem = async (id) => {
   const {error} = await sb.from('itens').insert(dados);
   if(error) return aviso('app-aviso', error.message);
   await carregarResumoItens();
-  await desenharItens(id);
+  await desenharItens(k, id);
   carregarRetornos(); carregarCronograma();
 };
 
-window.concluirItem = async (itemId, demandaId, feito) => {
+window.concluirItem = async (itemId, k, demandaId, feito) => {
   const patch = feito
     ? {concluido_em: new Date().toISOString(), recebido_em: hoje()}
     : {concluido_em: null, recebido_em: null};
   const {error} = await sb.from('itens').update(patch).eq('id', itemId);
   if(error) return aviso('app-aviso', error.message);
   await carregarResumoItens();
-  await desenharItens(demandaId);
-  carregarRetornos();
+  await desenharItens(k, demandaId);
+  carregarRetornos(); carregarCronograma();
 };
 
-window.removerItem = async (itemId, demandaId) => {
+window.removerItem = async (itemId, k, demandaId) => {
   const {error} = await sb.from('itens').delete().eq('id', itemId);
   if(error) return aviso('app-aviso', error.message);
   await carregarResumoItens();
-  await desenharItens(demandaId);
-  carregarRetornos();
+  await desenharItens(k, demandaId);
+  carregarRetornos(); carregarCronograma();
 };
 
-window.alternarSub = (id) => {
+window.alternarSub = async (id) => {
   const g = $('sub-' + id), c = $('cr-' + id);
-  const aberto = g.classList.toggle('hidden');
-  c.textContent = (aberto ? '▸ ' : '▾ ') + c.textContent.replace(/[▸▾]\s*/,'');
+  const fechado = g.classList.toggle('hidden');
+  c.textContent = (fechado ? '▸ ' : '▾ ') + c.textContent.replace(/[▸▾]\s*/,'');
+  if(!fechado) await desenharItens('g-' + id, id);
 };
 
 window.concluirItemCronograma = async (itemId, feito) => {
@@ -1740,7 +1746,7 @@ async function carregarCronograma(){
   $('cr-pendentes').textContent = semPrazo.length
     ? `${semPrazo.length} pendente(s)` : 'nenhuma';
   $('cr-fila').innerHTML = semPrazo.length
-    ? semPrazo.map(d => cartaoDemanda(d, null, true)).join('')
+    ? semPrazo.map(d => cartaoDemanda(d, null, true, 'c')).join('')
     : `<div class="vazio"><b>Tudo validado</b>
         <p>Nenhuma demanda esperando definição de prazo.</p></div>`;
 
@@ -1865,10 +1871,10 @@ async function carregarCronograma(){
         </div></div>`;
     }).join('');
 
-    const caret = subs.length
-      ? `<button class="gt-caret" onclick="alternarSub('${d.id}')"
-           id="cr-${d.id}" aria-label="Mostrar itens">▸ ${subs.length}</button>`
-      : '<span class="gt-caret" style="visibility:hidden">▸ 0</span>';
+    // O caret aparece mesmo sem itens: é por ele que se cadastra o
+    // primeiro, sem precisar voltar para a aba Fila.
+    const caret = `<button class="gt-caret" onclick="alternarSub('${d.id}')"
+        id="cr-${d.id}" aria-label="Itens da demanda">▸ ${subs.length}</button>`;
 
     return `<div class="gt-linha">
       <div class="gt-rot" style="display:flex;align-items:center;gap:8px">
@@ -1887,7 +1893,11 @@ async function carregarCronograma(){
              onclick="abrirReprogramar('${d.id}','${esc(d.numero)}','${d.prazo_previsto}')"></div>
         <span class="gt-data" style="${posData}">${dataBR(d.prazo_previsto).slice(0,5)}</span>
       </div></div>
-      <div class="gt-grupo hidden" id="sub-${d.id}">${linhasSub}</div>`;
+      <div class="gt-grupo hidden" id="sub-${d.id}">${linhasSub}
+        <div class="gt-itens">
+          <div class="itens" id="itens-g-${d.id}" style="margin:0;padding:0;border:none"></div>
+        </div>
+      </div>`;
   }).join('');
 
   $('cr-gantt').innerHTML = `
