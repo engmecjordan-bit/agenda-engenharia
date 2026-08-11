@@ -1207,32 +1207,32 @@ window.editarFornecedor = async (id) => {
   if(error || !f) return aviso('app-aviso','Fornecedor não encontrado.');
 
   modal(`Fornecedor — ${f.nome}`, `
-    <div class="field"><label for="f-nome">Nome</label>
-      <input id="f-nome" value="${esc(f.nome)}"></div>
+    <div class="field"><label for="fr-nome">Nome</label>
+      <input id="fr-nome" value="${esc(f.nome)}"></div>
     <div class="row2">
-      <div class="field"><label for="f-contato">Pessoa de contato</label>
-        <input id="f-contato" value="${esc(f.contato || '')}"></div>
-      <div class="field"><label for="f-tel">WhatsApp</label>
-        <input id="f-tel" value="${esc(telefoneBonito(f.telefone))}"
+      <div class="field"><label for="fr-contato">Pessoa de contato</label>
+        <input id="fr-contato" value="${esc(f.contato || '')}"></div>
+      <div class="field"><label for="fr-tel">WhatsApp</label>
+        <input id="fr-tel" value="${esc(telefoneBonito(f.telefone))}"
                placeholder="(54) 99999-8888"></div>
     </div>
-    <div class="field"><label for="f-email">E-mail</label>
-      <input id="f-email" type="email" value="${esc(f.email || '')}"></div>
-    <div class="field"><label for="f-obs">Observação</label>
-      <textarea id="f-obs" style="min-height:56px">${esc(f.observacao || '')}</textarea></div>
+    <div class="field"><label for="fr-email">E-mail</label>
+      <input id="fr-email" type="email" value="${esc(f.email || '')}"></div>
+    <div class="field"><label for="fr-obs">Observação</label>
+      <textarea id="fr-obs" style="min-height:56px">${esc(f.observacao || '')}</textarea></div>
     <p style="font-size:12.5px;color:var(--ink3)">
       Pode digitar o número com parênteses e traços. Se tiver DDD e 8 ou 9
       dígitos, o país é assumido como Brasil.</p>`,
     async () => {
-      const nome = $('f-nome').value.trim();
+      const nome = $('fr-nome').value.trim();
       if(!nome) throw new Error('Informe o nome.');
-      const bruto = $('f-tel').value.trim();
+      const bruto = $('fr-tel').value.trim();
       const tel = bruto ? normalizarTelefone(bruto) : null;
       if(bruto && !tel) throw new Error('Número de telefone não reconhecido.');
       const {error: e2} = await sb.from('fornecedores').update({
-        nome, contato: $('f-contato').value.trim() || null,
-        telefone: tel, email: $('f-email').value.trim() || null,
-        observacao: $('f-obs').value.trim() || null,
+        nome, contato: $('fr-contato').value.trim() || null,
+        telefone: tel, email: $('fr-email').value.trim() || null,
+        observacao: $('fr-obs').value.trim() || null,
         atualizado_em: new Date().toISOString(),
       }).eq('id', id);
       if(e2) throw new Error(e2.message);
