@@ -210,6 +210,11 @@ textarea{resize:vertical;min-height:74px}
 .tp-c{flex:1;min-width:0}
 .tp-c b{display:block;font-size:14px;font-weight:600}
 .tp-c span{display:block;font-size:12px;color:var(--ink2)}
+.cores{display:flex;gap:9px;flex-wrap:wrap}
+.cores label{margin:0;cursor:pointer;line-height:0}
+.cores input{position:absolute;opacity:0;width:0;height:0}
+.cores i{display:block;width:30px;height:30px;border-radius:50%;border:2px solid transparent;box-shadow:0 0 0 1px var(--rule)}
+.cores label:has(input:checked) i{border-color:var(--card);box-shadow:0 0 0 2px var(--ink)}
 .parts{display:flex;gap:8px;flex-wrap:wrap}
 .parts label{display:flex;align-items:center;gap:7px;margin:0;padding:5px 11px 5px 7px;border:1px solid var(--rule);border-radius:20px;cursor:pointer;font-size:13px;color:var(--ink);background:var(--card)}
 .parts label:has(input:checked){border-color:var(--steel);background:#EFF4F5;font-weight:500}
@@ -237,9 +242,8 @@ textarea{resize:vertical;min-height:74px}
 .ag-rot em{font-family:var(--mono);font-style:normal;font-size:11px;color:var(--ink3);flex:none}
 .ag-trilha{flex:1;position:relative}
 .ag-bloco{cursor:pointer;position:absolute;height:19px;border-radius:2px;border:1px solid var(--rule);background:#F4F6F7;overflow:hidden;display:flex;align-items:center;padding:0 5px;cursor:default}
-.ag-bloco span{font-size:10.5px;font-family:var(--mono);color:var(--ink);white-space:nowrap}
-.ag-bloco.hj{background:#DCEAF6;border-color:#7FAAD0}
-.ag-bloco.hj span{color:#14395C;font-weight:500}
+.ag-bloco span{font-size:10.5px;font-family:var(--mono);white-space:nowrap;font-weight:500}
+.ag-bloco span{color:inherit}
 .gt-caret{background:none;border:none;padding:0 8px 0 0;color:var(--ink3);font-size:11px;font-family:var(--mono);cursor:pointer;flex:none}
 .gt-caret:hover{color:var(--steel)}
 .gt-linha.sub{height:34px;background:rgba(240,244,245,.5)}
@@ -694,7 +698,18 @@ function aviso(alvo, texto, tipo){
 
 /* ---------------- avatar ---------------- */
 let PESSOAS = {};
-const PALETA = ['#17323F','#0E7C86','#B87333','#5C6E7A','#7A5C3F','#2F6B4F'];
+const PALETA = ['#1D6FB8','#1D8F5B','#B87333','#7B5EA7','#C0552F','#0E7C86',
+  '#A33B5C','#5C6E7A'];
+
+// Cor de identificação da pessoa. Se ninguém escolheu, deriva uma da
+// paleta pelo id — assim a cor é estável entre sessões.
+function corDe(pid){
+  const p = PESSOAS[pid];
+  if(p?.cor) return p.cor;
+  if(!pid) return 'var(--done)';
+  return PALETA[(pid.charCodeAt(0) + pid.charCodeAt(1) + pid.charCodeAt(2))
+    % PALETA.length];
+}
 
 function iniciais(nome){
   const p = (nome || '?').trim().split(/\s+/);
@@ -708,7 +723,7 @@ function avatar(pid, tam = 24){
   if(p.foto_url)
     return `<img class="av" src="${esc(p.foto_url)}" alt="${esc(p.nome)}"
       title="${esc(p.nome)}" style="${est}">`;
-  const cor = PALETA[(pid.charCodeAt(0) + pid.charCodeAt(1)) % PALETA.length];
+  const cor = corDe(pid);
   return `<span class="av av-txt" title="${esc(p.nome)}"
     style="${est};background:${cor};font-size:${Math.round(tam*0.42)}px">${
     esc(iniciais(p.nome))}</span>`;
@@ -827,13 +842,30 @@ $('btn-sair').onclick = () => sb.auth.signOut();
 
 $('me-avatar').onclick = async () => {
   const {data: eu} = await sb.from('profiles')
-    .select('nome, funcao').eq('id', EU.id).single();
+    .select('nome, funcao, cor').eq('id', EU.id).single();
+  const cores = [
+    ['#1D6FB8','Azul'], ['#1D8F5B','Verde'], ['#B87333','Cobre'],
+    ['#7B5EA7','Roxo'], ['#C0552F','Laranja'], ['#0E7C86','Petróleo'],
+    ['#A33B5C','Vinho'], ['#5C6E7A','Aço'],
+  ];
+  const atual = eu?.cor || corDe(EU.id);
+
   modal('Meu perfil', `
     <div class="field"><label for="m-nome">Nome</label>
       <input id="m-nome" value="${esc(eu?.nome || '')}"></div>
     <div class="field"><label for="m-funcao">Função</label>
       <input id="m-funcao" value="${esc(eu?.funcao || '')}"
              placeholder="Ex.: Aplicação e Turnkey"></div>
+    <div class="field"><label>Minha cor</label>
+      <div class="cores">${cores.map(([hex, nome]) => `
+        <label title="${nome}">
+          <input type="radio" name="mcor" value="${hex}"
+            ${hex.toLowerCase() === atual.toLowerCase() ? 'checked' : ''}>
+          <i style="background:${hex}"></i>
+        </label>`).join('')}</div>
+      <p style="font-size:12.5px;color:var(--ink3);margin-top:6px">
+        Identifica seus compromissos na agenda da equipe e suas cotações
+        no cronograma.</p></div>
     <div class="field"><label for="m-foto">Foto <span style="font-weight:400">(opcional)</span></label>
       <input id="m-foto" type="file" accept="image/jpeg,image/png,image/webp"></div>
     <p style="font-size:12.5px;color:var(--ink3)">
@@ -842,8 +874,10 @@ $('me-avatar').onclick = async () => {
     async () => {
       const nome = $('m-nome').value.trim();
       if(!nome) throw new Error('Informe seu nome.');
+      const escolhida = document.querySelector('input[name="mcor"]:checked');
       const {error} = await sb.from('profiles')
-        .update({nome, funcao: $('m-funcao').value.trim() || null})
+        .update({nome, funcao: $('m-funcao').value.trim() || null,
+                 cor: escolhida ? escolhida.value : null})
         .eq('id', EU.id);
       if(error) throw new Error(error.message);
       EU.nome = nome;
@@ -1806,6 +1840,7 @@ async function carregarColaboradores(){
 
   $('e-colaboradores').innerHTML = lista.map(c => `
     <div class="col-item ${c.id === CR_PESSOA ? 'ativo' : ''}"
+         style="border-left-color:${c.cor || corDe(c.id)}"
          onclick="filtrarPor('${c.id}')"
          title="Ver o cronograma de ${esc(c.nome)}">
       ${avatar(c.id, 46)}
@@ -2151,9 +2186,14 @@ async function carregarCronograma(){
 
       const agora = ini <= hojeFim.getTime() && fim >= hojeIni.getTime();
       const cabe = largura > pxParaPct(cheio.length * 5.6 + 10);
-      return `<div class="ag-bloco ${agora ? 'hj' : ''}"
+      // Preenchido quando é hoje, apenas contornado nos demais dias:
+      // a cor identifica a pessoa e o preenchimento marca o agora.
+      const cp = corDe(pessoa.id);
+      return `<div class="ag-bloco"
         style="left:${a}%;width:${largura}%;top:${f * 22 + 3}px;
-               ${agora ? '' : `background:${esc(c.cor)}1F;border-color:${esc(c.cor)}`}"
+               border-color:${cp};${agora
+                 ? `background:${cp};color:#fff`
+                 : `background:${cp}1A;color:${cp}`}"
         ondblclick="irParaAgenda('${c.inicio}')"
         title="${esc(cheio)}${c.dia_inteiro ? ' — dia inteiro'
           : ' — ' + hhmm(c.inicio) + ' às ' + hhmm(c.fim)}${
@@ -2163,7 +2203,8 @@ async function carregarCronograma(){
     }).join('');
 
     const alt = Math.max(sub.length, 1) * 22 + 6;
-    return `<div class="ag-linha" style="height:${alt}px">
+    return `<div class="ag-linha" style="height:${alt}px;
+        box-shadow:inset 3px 0 0 ${corDe(pessoa.id)}">
       <div class="ag-rot">${avatar(pessoa.id, 22)}<span>${esc(pessoa.nome)}</span>
         ${meus.length ? `<em>${meus.length}</em>` : ''}</div>
       <div class="ag-trilha">${grade}
@@ -2248,7 +2289,8 @@ async function carregarCronograma(){
         id="cr-${d.id}" aria-label="Itens da demanda">▸ ${subs.length}</button>`;
     const pendentes = subs.filter(i => !i.concluido_em).length;
 
-    return `<div class="gt-linha">
+    return `<div class="gt-linha" style="box-shadow:inset 3px 0 0 ${
+        d.responsavel_id ? corDe(d.responsavel_id) : 'transparent'}">
       <div class="gt-rot gt-rot-cli" style="display:flex;align-items:center;gap:8px"
            onclick="alternarSub('${d.id}')"
            title="Clique para ver os itens">
