@@ -520,9 +520,15 @@ textarea{resize:vertical;min-height:74px}
       </div>
 
       <div id="aba-agenda" class="hidden">
-        <div class="card">
-          <div class="card-h"><h2>Novo compromisso</h2>
-            <div class="eyebrow">Visível apenas ao setor</div></div>
+        <div class="card" style="padding:0">
+          <button id="btn-abrir-comp" class="form-toggle">
+            <span>Novo compromisso</span>
+            <span style="display:flex;align-items:center;gap:12px">
+              <span class="eyebrow" style="margin:0">Visível apenas ao setor</span>
+              <b id="comp-sinal">+</b>
+            </span>
+          </button>
+          <div id="comp-corpo" class="hidden" style="padding:0 20px 20px">
           <div class="row2">
             <div class="field">
               <label for="c-tipo">Tipo</label>
@@ -591,6 +597,7 @@ textarea{resize:vertical;min-height:74px}
             </select>
           </div>
           <button id="btn-comp" class="btn">Adicionar à agenda</button>
+          </div>
         </div>
         <div class="card">
           <div class="cal-topo">
@@ -2136,6 +2143,11 @@ window.abrirReprogramar = (id, numero, prazoAtual) => {
     }, 'Confirmar reprogramação');
 };
 
+$('btn-abrir-comp').onclick = () => {
+  const aberto = !$('comp-corpo').classList.toggle('hidden');
+  $('comp-sinal').textContent = aberto ? '−' : '+';
+};
+
 $('c-repete').onchange = () =>
   $('c-ate-campo').classList.toggle('hidden', !$('c-repete').value);
 
@@ -2194,6 +2206,8 @@ $('btn-comp').onclick = async () => {
   $('c-privado').checked = false;
   $('c-repete').value = ''; $('c-ate-campo').classList.add('hidden');
   desenharParticipantes('c-participantes');
+  $('comp-corpo').classList.add('hidden');
+  $('comp-sinal').textContent = '+';
   carregarAgenda(); carregarConflitos(); carregarCronograma();
 };
 
