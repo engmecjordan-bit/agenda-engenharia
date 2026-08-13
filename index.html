@@ -643,6 +643,7 @@ textarea{resize:vertical;min-height:74px}
   </main>
 </div>
 
+<datalist id="lista-fornecedores"></datalist>
 <div id="modal-slot"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1398,8 +1399,12 @@ async function desenharItens(k, id){
       <span class="item-sit i-${i.situacao}">${
         feito ? '' : SIT_I[i.situacao]}${
         i.dias_atraso ? ` ${i.dias_atraso}d` : ''}</span>
-      <button class="btn-link" style="font-size:12px"
-        onclick="removerItem('${i.id}','${k}','${id}')">remover</button>
+      <span style="display:flex;gap:9px;flex:none">
+        <button class="btn-link" style="font-size:12px"
+          onclick="editarItem('${i.id}','${k}','${id}')">editar</button>
+        <button class="btn-link" style="font-size:12px;color:var(--late)"
+          onclick="removerItem('${i.id}','${k}','${id}')">remover</button>
+      </span>
     </div>`;
   }).join('');
 
@@ -1428,8 +1433,9 @@ async function desenharItens(k, id){
     <div style="margin-top:9px">
       <button class="btn btn-sm" onclick="adicionarItem('${k}','${id}')">Adicionar item</button>
     </div>
-    <datalist id="lista-fornecedores">${
-      FORNECEDORES.map(f => `<option value="${esc(f)}">`).join('')}</datalist>`;
+    `;
+  $('lista-fornecedores').innerHTML =
+    FORNECEDORES.map(f => `<option value="${esc(f)}">`).join('');
 
   $('tr-' + k).innerHTML = Object.values(PESSOAS).map(e =>
     `<option value="${e.id}" ${e.id === EU.id ? 'selected' : ''}>${
@@ -1480,6 +1486,91 @@ window.concluirItem = async (itemId, k, demandaId, feito) => {
   await carregarResumoItens();
   await desenharItens(k, demandaId);
   carregarRetornos(); carregarCronograma();
+};
+
+window.editarItem = async (itemId, k, demandaId) => {
+  const {data: i, error} = await sb.from('itens')
+    .select('*').eq('id', itemId).single();
+  if(error || !i) return aviso('app-aviso','Item não encontrado.');
+
+  const opcResp = Object.values(PESSOAS).map(p =>
+    `<option value="${p.id}" ${p.id === i.responsavel_id ? 'selected' : ''}>${
+      esc(p.nome)}</option>`).join('');
+
+  modal('Editar item', `
+    <div class="field"><label for="i-desc">Descrição</label>
+      <input id="i-desc" value="${esc(i.descricao)}"></div>
+    <div class="row2">
+      <div class="field"><label for="i-tipo">Tipo</label>
+        <select id="i-tipo" onchange="alternarTipoItem()">
+          <option value="interno" ${i.tipo === 'interno' ? 'selected' : ''}>Tarefa interna</option>
+          <option value="fornecedor" ${i.tipo === 'fornecedor' ? 'selected' : ''}>Fornecedor</option>
+        </select></div>
+      <div class="field"><label for="i-resp">Responsável</label>
+        <select id="i-resp">${opcResp}</select></div>
+    </div>
+    <div class="field ${i.tipo === 'fornecedor' ? '' : 'hidden'}" id="i-forn-campo">
+      <label for="i-forn">Fornecedor</label>
+      <input id="i-forn" list="lista-fornecedores" value="${esc(i.fornecedor || '')}"></div>
+    <div class="row2">
+      <div class="field"><label for="i-ini">Início</label>
+        <input id="i-ini" type="date" value="${i.inicio || ''}"></div>
+      <div class="field"><label for="i-prazo" id="i-prazo-lbl">${
+        i.tipo === 'fornecedor' ? 'Retorno prometido' : 'Prazo da tarefa'}</label>
+        <input id="i-prazo" type="date" value="${i.prazo_retorno || ''}"></div>
+    </div>
+    <div class="field"><label for="i-receb">Recebido em <span style="font-weight:400">(preencher encerra o item)</span></label>
+      <input id="i-receb" type="date" value="${i.recebido_em || ''}"></div>
+    <div class="field"><label for="i-obs">Observação</label>
+      <textarea id="i-obs" style="min-height:56px">${esc(i.observacao || '')}</textarea></div>`,
+
+    async () => {
+      const desc = $('i-desc').value.trim();
+      if(desc.length < 3) throw new Error('Descreva o item com pelo menos 3 letras.');
+      const ini = $('i-ini').value || null;
+      const prazo = $('i-prazo').value || null;
+      if(ini && prazo && prazo < ini)
+        throw new Error('O prazo não pode ser anterior ao início.');
+
+      const tipo = $('i-tipo').value;
+      const patch = {
+        descricao: desc, tipo,
+        responsavel_id: $('i-resp').value || null,
+        inicio: ini, prazo_retorno: prazo,
+        recebido_em: $('i-receb').value || null,
+        observacao: $('i-obs').value.trim() || null,
+      };
+
+      if(tipo === 'fornecedor'){
+        const nome = $('i-forn').value.trim();
+        if(!nome) throw new Error('Informe o fornecedor.');
+        const {data: fid, error: ef} = await sb.rpc('garantir_fornecedor',
+          {p_nome: nome});
+        if(ef) throw new Error(ef.message);
+        patch.fornecedor = nome;
+        patch.fornecedor_id = fid;
+        if(!i.enviado_em) patch.enviado_em = ini || hoje();
+      } else {
+        patch.fornecedor = null;
+        patch.fornecedor_id = null;
+      }
+
+      // Desmarcar a data de recebimento reabre o item.
+      if(!patch.recebido_em && i.recebido_em) patch.concluido_em = null;
+
+      const {error: e2} = await sb.from('itens').update(patch).eq('id', itemId);
+      if(e2) throw new Error(e2.message);
+      aviso('app-aviso','Item atualizado.','ok');
+      await carregarResumoItens();
+      await desenharItens(k, demandaId);
+      carregarRetornos(); carregarCronograma(); carregarFornecedores();
+    }, 'Salvar');
+};
+
+window.alternarTipoItem = () => {
+  const forn = $('i-tipo').value === 'fornecedor';
+  $('i-forn-campo').classList.toggle('hidden', !forn);
+  $('i-prazo-lbl').textContent = forn ? 'Retorno prometido' : 'Prazo da tarefa';
 };
 
 window.removerItem = async (itemId, k, demandaId) => {
