@@ -117,6 +117,8 @@ textarea{resize:vertical;min-height:74px}
 .fn-num em{font-style:normal;color:var(--late);font-weight:600}
 @media(max-width:640px){.fn-item{flex-wrap:wrap}.fn-num{text-align:left;min-width:0}}
 .rt-acoes{display:flex;align-items:center;gap:8px;flex:none}
+.btn-mail{display:inline-block;font-size:13px;font-weight:500;padding:5px 12px;border-radius:3px;background:var(--steel);color:#fff;text-decoration:none;white-space:nowrap}
+.btn-mail:hover{background:var(--steel2)}
 .btn-zap{display:inline-block;font-size:13px;font-weight:500;padding:5px 12px;border-radius:3px;background:#1D8F5B;color:#fff;text-decoration:none;white-space:nowrap}
 .btn-zap:hover{background:#17784C}
 .rt-dir{text-align:right;flex:none;min-width:132px}
@@ -198,6 +200,12 @@ textarea{resize:vertical;min-height:74px}
 .gt-grade{position:absolute;top:0;bottom:0;width:1px;background:#E9EEEF}
 .gt-resumo{position:relative;height:52px;border-bottom:1px solid var(--rule);margin-bottom:6px}
 .gt-marca{position:absolute;transform:translateX(-50%);font-family:var(--mono);font-size:10.5px;color:#fff;padding:2px 6px;border-radius:2px;white-space:nowrap;cursor:default}
+.tp-item{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--rule)}
+.tp-item:last-child{border-bottom:none}
+.tp-item.off{opacity:.55}
+.tp-c{flex:1;min-width:0}
+.tp-c b{display:block;font-size:14px;font-weight:600}
+.tp-c span{display:block;font-size:12px;color:var(--ink2)}
 .parts{display:flex;gap:8px;flex-wrap:wrap}
 .parts label{display:flex;align-items:center;gap:7px;margin:0;padding:5px 11px 5px 7px;border:1px solid var(--rule);border-radius:20px;cursor:pointer;font-size:13px;color:var(--ink);background:var(--card)}
 .parts label:has(input:checked){border-color:var(--steel);background:#EFF4F5;font-weight:500}
@@ -1182,6 +1190,7 @@ async function carregarFornecedores(){
       <span class="fn-num">${f.vezes} solicitação(ões)${
         f.pendentes ? `<br><em>${f.pendentes} em aberto</em>` : ''}</span>
       <span class="rt-acoes">
+        ${f.email ? `<a class="btn-mail" href="mailto:${esc(f.email)}">E-mail</a>` : ''}
         ${zap ? `<a class="btn-zap" href="${zap}" target="_blank"
              rel="noopener noreferrer">WhatsApp</a>` : ''}
         <button class="btn-2 btn-sm" onclick="editarFornecedor('${f.id}')">Editar</button>
@@ -1220,6 +1229,66 @@ $('btn-novo-forn').onclick = () => modal('Novo fornecedor', `
     aviso('app-aviso','Fornecedor cadastrado.','ok');
     carregarFornecedores();
   }, 'Cadastrar');
+
+// Esqueleto de cobrança. O tom muda conforme a situação: quem ainda
+// está no prazo recebe uma confirmação; quem passou, uma cobrança
+// cordial. Em nenhum caso o texto sai sozinho — você revisa antes.
+function textoCobranca(r, canal){
+  const nome  = EU.nome || '';
+  const trato = r.contato ? `Prezado(a) ${r.contato},` : 'Prezados,';
+  const ref   = `${r.descricao} (nossa referência ${r.numero}${
+    r.cliente ? ` — cliente ${r.cliente}` : ''})`;
+
+  let miolo;
+  if(r.situacao === 'atrasado'){
+    miolo = `Estamos acompanhando a solicitação de ${ref}, cujo retorno `
+      + `estava previsto para ${dataBR(r.prazo_retorno)}.\n\n`
+      + `Como ainda não recebemos o material, gostaríamos de saber se `
+      + `há alguma pendência da nossa parte que possamos resolver, e `
+      + `qual a nova previsão de entrega.`;
+  } else if(r.situacao === 'sem_prazo'){
+    miolo = `Encaminhamos a solicitação de ${ref} e gostaríamos de `
+      + `alinhar uma previsão de retorno, para que possamos nos `
+      + `organizar internamente.`;
+  } else {
+    miolo = `Estamos acompanhando a solicitação de ${ref}, com retorno `
+      + `previsto para ${dataBR(r.prazo_retorno)}.\n\n`
+      + `Poderiam confirmar se a data segue viável?`;
+  }
+
+  const fecho = r.demanda_prazo
+    ? `\n\nEsta informação é necessária para concluirmos nossa proposta, `
+      + `com entrega prevista para ${dataBR(r.demanda_prazo)}.`
+    : '';
+
+  const corpo = `${trato}\n\n${miolo}${fecho}\n\n`
+    + `Ficamos à disposição para qualquer esclarecimento.\n\n`
+    + `Atenciosamente,\n${nome}\nEngenharia de Aplicação — Güntner do Brasil`;
+
+  // No WhatsApp o texto vai mais curto: mensagem longa em chat não é lida.
+  if(canal === 'whats'){
+    const abre = r.contato ? `Olá, ${r.contato}!` : 'Olá!';
+    const sit = r.situacao === 'atrasado'
+      ? `o retorno estava previsto para ${dataBR(r.prazo_retorno)} e ainda não recebemos`
+      : r.situacao === 'sem_prazo'
+        ? 'gostaríamos de alinhar uma previsão de retorno'
+        : `o retorno está previsto para ${dataBR(r.prazo_retorno)}`;
+    return `${abre} Aqui é ${nome}, da Engenharia de Aplicação da Güntner. `
+      + `Sobre a solicitação "${r.descricao}" (ref. ${r.numero}): ${sit}. `
+      + `Consegue me passar uma posição? Obrigado!`;
+  }
+  return corpo;
+}
+
+function linkEmail(r){
+  const {data: f} = {data: FORN_DADOS.find(x => x.id === r.fornecedor_id)};
+  const dest = f?.email;
+  if(!dest) return null;
+  const assunto = `[${r.numero}] ${r.descricao} — Güntner do Brasil`;
+  return `mailto:${encodeURIComponent(dest)}`
+    + `?subject=${encodeURIComponent(assunto)}`
+    + `&body=${encodeURIComponent(textoCobranca(r, 'email'))}`;
+}
 
 window.editarFornecedor = async (id) => {
   const {data: f, error} = await sb.from('fornecedores')
@@ -1485,13 +1554,8 @@ async function carregarRetornos(){
     : r.situacao === 'sem_prazo' ? 'sem prazo combinado'
     : `faltam ${r.dias_restantes} dia(s) útil(eis)`;
 
-    // Mensagem pronta, para não redigitar o contexto a cada cobrança.
-    const msg = `Olá${r.contato ? ', ' + r.contato : ''}! Aqui é ${
-      EU.nome || ''} da Güntner. Estou acompanhando a solicitação "${
-      r.descricao}" (nossa referência ${r.numero})${
-      r.prazo_retorno ? `, com retorno previsto para ${dataBR(r.prazo_retorno)}`
-                      : ''}. Consegue me confirmar a previsão? Obrigado.`;
-    const zap = linkWhats(r.telefone, msg);
+    const zap = linkWhats(r.telefone, textoCobranca(r, 'whats'));
+    const mail = linkEmail(r);
     return `<div class="rt-item" style="border-left-color:${cor}">
       <span class="rt-pos">${i + 1}</span>
       <span class="rt-c">
@@ -1512,11 +1576,14 @@ async function carregarRetornos(){
       </span>
       ${avatar(r.responsavel_id, 28)}
       <span class="rt-acoes">
+        ${mail ? `<a class="btn-mail" href="${mail}"
+             title="Cobrar por e-mail — abre com o texto pronto">E-mail</a>` : ''}
         ${zap
           ? `<a class="btn-zap" href="${zap}" target="_blank" rel="noopener noreferrer"
                title="Cobrar ${esc(r.fornecedor)} no WhatsApp">WhatsApp</a>`
-          : `<button class="btn-link" style="font-size:12px"
-               onclick="editarFornecedor('${r.fornecedor_id}')">+ telefone</button>`}
+          : ''}
+        ${(!zap && !mail) ? `<button class="btn-link" style="font-size:12px"
+               onclick="editarFornecedor('${r.fornecedor_id}')">+ contato</button>` : ''}
         <button class="btn-2 btn-sm" onclick="marcarRecebido('${r.item_id}')">Recebido</button>
       </span>
     </div>`;
@@ -1576,8 +1643,8 @@ async function carregarTudo(){
   carregarFila();
   carregarCronograma();
   carregarAgenda();
+  await carregarFornecedores();
   carregarRetornos();
-  carregarFornecedores();
   carregarConflitos();
   const t = $('atualizado-em');
   if(t) t.textContent = 'atualizado ' +
@@ -1701,40 +1768,90 @@ $('btn-abrir-dem').onclick = async () => {
         esc(p.nome)}</option>`).join('');
 };
 
-$('btn-novo-tipo').onclick = () => modal('Novo tipo de cotação', `
-  <p style="font-size:13.5px;color:var(--ink2);margin-bottom:14px">
-    Fica disponível também no formulário do vendedor.</p>
-  <div class="field"><label for="t-nome">Nome</label>
-    <input id="t-nome" placeholder="Ex.: Câmara de estocagem"></div>
-  <div class="row2">
-    <div class="field"><label for="t-prazo">Prazo sugerido (dias úteis)</label>
-      <input id="t-prazo" type="number" min="1" max="120" value="5"></div>
-    <div class="field"><label for="t-ordem">Ordem na lista</label>
-      <input id="t-ordem" type="number" min="1" max="99" value="50"></div>
-  </div>
-  <div class="field"><label for="t-desc">Descrição <span style="font-weight:400">(opcional)</span></label>
-    <input id="t-desc"></div>`,
-  async () => {
-    const nome = $('t-nome').value.trim();
-    if(!nome) throw new Error('Informe o nome do tipo.');
-    const {data, error} = await sb.from('tipos_cotacao').insert({
-      nome,
-      prazo_dias: Number($('t-prazo').value) || 5,
-      ordem: Number($('t-ordem').value) || 50,
-      descricao: $('t-desc').value.trim() || null,
-    }).select('id, nome, prazo_dias').single();
-    if(error) throw new Error(error.message.includes('duplicate')
-      ? 'Já existe um tipo com esse nome.' : error.message);
+async function recarregarTipos(selecionar){
+  const {data} = await sb.from('tipos_cotacao')
+    .select('*').eq('ativo', true).order('ordem');
+  TIPOS = data || [];
+  const sel = $('d-tipo');
+  if(sel) sel.innerHTML = TIPOS.map(t =>
+    `<option value="${t.id}" data-p="${t.prazo_dias}" ${
+      t.id === selecionar ? 'selected' : ''}>${esc(t.nome)}</option>`).join('');
+}
 
-    // Recarrega a lista e já deixa o novo tipo selecionado.
-    const {data: tipos} = await sb.from('tipos_cotacao')
-      .select('*').eq('ativo', true).order('ordem');
-    TIPOS = tipos || [];
-    $('d-tipo').innerHTML = TIPOS.map(t =>
-      `<option value="${t.id}" data-p="${t.prazo_dias}" ${
-        t.id === data.id ? 'selected' : ''}>${esc(t.nome)}</option>`).join('');
-    aviso('app-aviso', `Tipo "${data.nome}" criado.`, 'ok');
-  }, 'Criar tipo');
+async function abrirTipos(){
+  // Traz também os inativos: é aqui que se reativa um tipo desligado.
+  const {data: todos} = await sb.from('tipos_cotacao').select('*').order('ordem');
+  const {data: usos} = await sb.from('demandas').select('tipo_id');
+  const conta = {};
+  (usos || []).forEach(d => conta[d.tipo_id] = (conta[d.tipo_id] || 0) + 1);
+
+  const linhas = (todos || []).map(t => `
+    <div class="tp-item ${t.ativo ? '' : 'off'}">
+      <span class="tp-c">
+        <b>${esc(t.nome)}</b>
+        <span>${t.prazo_dias} dias úteis · ${
+          conta[t.id] ? `${conta[t.id]} demanda(s)` : 'nunca usado'}${
+          t.ativo ? '' : ' · desativado'}</span>
+      </span>
+      <button class="btn-link" style="font-size:12.5px"
+        onclick="alternarTipo('${t.id}',${!t.ativo})">${
+        t.ativo ? 'desativar' : 'reativar'}</button>
+      ${conta[t.id] ? '' : `<button class="btn-link"
+        style="font-size:12.5px;color:var(--late)"
+        onclick="excluirTipo('${t.id}','${esc(t.nome)}')">excluir</button>`}
+    </div>`).join('');
+
+  modal('Tipos de cotação', `
+    <div style="max-height:230px;overflow:auto;margin-bottom:16px;
+                border:1px solid var(--rule);border-radius:3px;padding:4px 12px">
+      ${linhas || '<p style="font-size:13px;color:var(--ink2);padding:8px 0">Nenhum tipo.</p>'}
+    </div>
+    <p style="font-size:12.5px;color:var(--ink3);margin-bottom:14px">
+      Tipo já usado por alguma demanda só pode ser desativado — some da
+      lista, mas o histórico continua íntegro.</p>
+    <div class="field"><label for="t-nome">Novo tipo</label>
+      <input id="t-nome" placeholder="Ex.: Câmara de estocagem"></div>
+    <div class="row2">
+      <div class="field"><label for="t-prazo">Prazo sugerido (dias úteis)</label>
+        <input id="t-prazo" type="number" min="1" max="120" value="5"></div>
+      <div class="field"><label for="t-ordem">Ordem na lista</label>
+        <input id="t-ordem" type="number" min="1" max="99" value="50"></div>
+    </div>`,
+    async () => {
+      const nome = $('t-nome').value.trim();
+      if(!nome) throw new Error('Informe o nome do novo tipo.');
+      const {data, error} = await sb.from('tipos_cotacao').insert({
+        nome,
+        prazo_dias: Number($('t-prazo').value) || 5,
+        ordem: Number($('t-ordem').value) || 50,
+      }).select('id, nome').single();
+      if(error) throw new Error(error.message.includes('duplicate')
+        ? 'Já existe um tipo com esse nome.' : error.message);
+      await recarregarTipos(data.id);
+      aviso('app-aviso', `Tipo "${data.nome}" criado.`, 'ok');
+    }, 'Criar tipo');
+}
+
+$('btn-novo-tipo').onclick = abrirTipos;
+
+window.alternarTipo = async (id, ativar) => {
+  const {error} = await sb.from('tipos_cotacao')
+    .update({ativo: ativar}).eq('id', id);
+  if(error) return aviso('app-aviso', error.message);
+  await recarregarTipos();
+  $('modal-slot').innerHTML = '';
+  abrirTipos();
+};
+
+window.excluirTipo = async (id, nome) => {
+  const {error} = await sb.from('tipos_cotacao').delete().eq('id', id);
+  if(error) return aviso('app-aviso',
+    'Não foi possível excluir. Se o tipo já foi usado, desative em vez de excluir.');
+  await recarregarTipos();
+  $('modal-slot').innerHTML = '';
+  aviso('app-aviso', `Tipo "${nome}" excluído.`, 'ok');
+  abrirTipos();
+};
 
 $('btn-cad-dem').onclick = async () => {
   const cliente = $('d-cliente').value.trim();
