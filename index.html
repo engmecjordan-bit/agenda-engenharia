@@ -177,9 +177,10 @@ textarea{resize:vertical;min-height:74px}
 
 /* ---- cronograma ---- */
 .gt-eixo{font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
-.gt-cab{position:relative;height:56px}
+.gt-cab{position:relative;min-height:38px}
 .gt-cab .lbl{position:absolute;font-family:var(--mono);font-size:11.5px;padding:2px 8px;border-radius:2px;white-space:nowrap;border:1px solid}
 .gt-cab .lbl-aus{background:#FAEEDA;border-color:#DFC08A;color:#7A4A08}
+.gt-cab .lbl-hj{background:#DCEAF6;border-color:#8FB6D6;color:#1B4A72;font-weight:500}
 .gt-cab .lbl-hoje{background:var(--steel);border-color:var(--steel);color:#fff;transform:translateX(-50%)}
 .gt-corpo{position:relative}
 .gt-fundo{position:absolute;inset:0;pointer-events:none}
@@ -2023,6 +2024,8 @@ async function carregarCronograma(){
     + `-${String(x.getDate()).padStart(2,'0')}`;
   const dt = x => new Date(x + 'T12:00:00').getTime();
   const dia = 864e5;
+  const hhmm = iso => new Date(iso).toLocaleTimeString('pt-BR',
+    {hour:'2-digit', minute:'2-digit'});
 
   const [{data: dem, error: e1}, {data: itens}] = await Promise.all([
     sb.from('demandas_visao').select('*')
@@ -2091,13 +2094,37 @@ async function carregarCronograma(){
     {p_de: iso(new Date(min)), p_ate: iso(new Date(max))});
   const bloqueios = (comp || []).filter(c => c.bloqueia_agenda);
 
-  const rotulos = bloqueios.map((c, i) => {
-    const a = pos(new Date(c.inicio).getTime());
-    if(a > 96) return '';
-    return `<span class="lbl lbl-aus" style="left:${a}%;top:${(i % 3) * 18 + 2}px"
-      title="${esc(c.mascarado ? 'Indisponível' : c.titulo)}">${
-      esc((c.mascarado ? 'Indisponível' : c.titulo).slice(0, 22))}</span>`;
-  }).join('');
+  // Empilhamento real: cada rótulo ocupa faixas conforme a largura que
+  // de fato tem. Antes eram três alturas fixas e eles se atropelavam.
+  const largGrafico = Math.max(($('cr-gantt')?.clientWidth || 900) - 300, 320);
+  const pxParaPct = px => (px / largGrafico) * 100;
+  const hojeIni = new Date(); hojeIni.setHours(0,0,0,0);
+  const hojeFim = new Date(); hojeFim.setHours(23,59,59,999);
+
+  const faixas = [];   // último ponto ocupado em cada faixa
+  const rotulos = bloqueios
+    .map(c => ({c, ini: new Date(c.inicio).getTime(),
+                fim: new Date(c.fim).getTime()}))
+    .sort((x, y) => x.ini - y.ini)
+    .map(({c, ini, fim}) => {
+      const a = pos(ini);
+      if(a > 97) return '';
+      const texto = (c.mascarado ? 'Indisponível' : c.titulo).slice(0, 30);
+      // 6,4 px por caractere mais o preenchimento das laterais.
+      const larg = pxParaPct(texto.length * 6.4 + 20);
+      let f = faixas.findIndex(ocupado => a > ocupado + 0.6);
+      if(f === -1){ faixas.push(0); f = faixas.length - 1; }
+      faixas[f] = a + larg;
+
+      const ehHoje = ini <= hojeFim.getTime() && fim >= hojeIni.getTime();
+      return `<span class="lbl ${ehHoje ? 'lbl-hj' : 'lbl-aus'}"
+        style="left:${a}%;top:${f * 21 + 2}px"
+        title="${esc((c.mascarado ? 'Indisponível' : c.titulo))}${
+          c.dia_inteiro ? '' : ' — ' + hhmm(c.inicio)}">${
+        ehHoje && !c.dia_inteiro ? hhmm(c.inicio) + ' ' : ''}${esc(texto)}</span>`;
+    }).join('');
+
+  const alturaCab = Math.max(faixas.length, 1) * 21 + 26;
 
   const ausencias = bloqueios.map(c => {
     const a = pos(new Date(c.inicio).getTime()), b = pos(new Date(c.fim).getTime());
@@ -2206,7 +2233,7 @@ async function carregarCronograma(){
     <div class="gt-eixo" style="margin-left:330px">${eixo}</div>
     <div class="gt-cab" style="margin-left:330px">
       ${rotulos}
-      <span class="lbl lbl-hoje" style="left:${pos(Date.now())}%;top:2px">hoje</span>
+      <span class="lbl lbl-hoje" style="left:${pos(Date.now())}%;top:${alturaCab - 20}px">hoje</span>
     </div>
     <div class="gt-corpo">
       <div class="gt-fundo" style="left:330px">
