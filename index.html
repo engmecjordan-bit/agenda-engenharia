@@ -175,7 +175,7 @@ textarea{resize:vertical;min-height:74px}
 
 /* ---- cronograma ---- */
 .gt-eixo{font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
-.gt-cab{position:relative;height:38px}
+.gt-cab{position:relative;height:56px}
 .gt-cab .lbl{position:absolute;font-family:var(--mono);font-size:11.5px;padding:2px 8px;border-radius:2px;white-space:nowrap;border:1px solid}
 .gt-cab .lbl-aus{background:#FAEEDA;border-color:#DFC08A;color:#7A4A08}
 .gt-cab .lbl-hoje{background:var(--steel);border-color:var(--steel);color:#fff;transform:translateX(-50%)}
@@ -198,6 +198,11 @@ textarea{resize:vertical;min-height:74px}
 .gt-grade{position:absolute;top:0;bottom:0;width:1px;background:#E9EEEF}
 .gt-resumo{position:relative;height:52px;border-bottom:1px solid var(--rule);margin-bottom:6px}
 .gt-marca{position:absolute;transform:translateX(-50%);font-family:var(--mono);font-size:10.5px;color:#fff;padding:2px 6px;border-radius:2px;white-space:nowrap;cursor:default}
+.parts{display:flex;gap:8px;flex-wrap:wrap}
+.parts label{display:flex;align-items:center;gap:7px;margin:0;padding:5px 11px 5px 7px;border:1px solid var(--rule);border-radius:20px;cursor:pointer;font-size:13px;color:var(--ink);background:var(--card)}
+.parts label:has(input:checked){border-color:var(--steel);background:#EFF4F5;font-weight:500}
+.parts input{width:auto;margin:0}
+.cal-parts{display:inline-flex;gap:2px;margin-left:4px;vertical-align:-3px}
 .col-item{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--steel2);border-radius:3px;padding:14px 16px;margin-bottom:10px;cursor:pointer;transition:border-color .15s,background .15s}
 .col-item:hover{border-left-color:var(--copper);background:#FAFCFC}
 .col-item.ativo{border-left-color:var(--copper);background:#FBF7F2}
@@ -209,6 +214,8 @@ textarea{resize:vertical;min-height:74px}
 .col-n b{display:block;font-family:var(--mono);font-size:20px;font-weight:600;line-height:1.1}
 .col-n span{font-size:10.5px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em}
 @media(max-width:640px){.col-item{flex-wrap:wrap}.col-nums{gap:16px}.col-n{min-width:44px}}
+.gt-ok{flex:none;border:1px solid var(--rule);background:var(--card);color:var(--ink3);border-radius:3px;width:28px;height:28px;font-size:14px;line-height:1;padding:0;cursor:pointer}
+.gt-ok:hover{border-color:var(--ok);color:var(--ok);background:#F1F8F6}
 .gt-caret{background:none;border:none;padding:0 8px 0 0;color:var(--ink3);font-size:11px;font-family:var(--mono);cursor:pointer;flex:none}
 .gt-caret:hover{color:var(--steel)}
 .gt-linha.sub{height:34px;background:rgba(240,244,245,.5)}
@@ -218,7 +225,11 @@ textarea{resize:vertical;min-height:74px}
 .gt-linha.sub.feito .gt-rot .txt{text-decoration:line-through;color:var(--ink3)}
 .gt-barra.sub{height:6px;top:10px;border-radius:3px}
 .gt-ponto{position:absolute;top:8px;width:9px;height:9px;border-radius:50%;margin-left:-4px}
-.gt-itens{background:#F8FAFA;border-top:1px dashed var(--rule);padding:12px 16px 14px 20px}
+.gt-grupo{position:relative;z-index:3}
+.gt-itens{position:relative;z-index:3;background:var(--card);border-top:1px dashed var(--rule);padding:14px 18px 16px}
+.gt-fundo{z-index:0}
+.gt-linha{background:var(--card)}
+.gt-linha.sub{background:#F3F6F7}
 .gt-marco{position:absolute;top:0;bottom:0;width:0;border-left:1px dashed var(--steel2);opacity:.5}
 .gt-data.sub{font-size:11.5px;color:var(--ink2);top:7px;font-weight:400}
 
@@ -424,7 +435,11 @@ textarea{resize:vertical;min-height:74px}
             <div class="row2">
               <div class="field">
                 <label for="d-tipo">Tipo de cotação</label>
-                <select id="d-tipo"></select>
+                <span style="display:flex;gap:6px">
+                  <select id="d-tipo" style="flex:1"></select>
+                  <button id="btn-novo-tipo" class="btn-2"
+                          style="flex:none;padding:9px 13px" title="Novo tipo">+</button>
+                </span>
               </div>
               <div class="field">
                 <label for="d-vendedor">Solicitado por</label>
@@ -519,6 +534,10 @@ textarea{resize:vertical;min-height:74px}
               <label for="c-fim">Fim</label>
               <input id="c-fim" type="datetime-local">
             </div>
+          </div>
+          <div class="field">
+            <label>Participantes <span style="font-weight:400">(opcional)</span></label>
+            <div id="c-participantes" class="parts"></div>
           </div>
           <div class="row2">
             <div class="field">
@@ -897,6 +916,7 @@ async function iniciar(){
     TIPOS_COMP = tc || [];
     $('c-tipo').innerHTML = TIPOS_COMP.map(t =>
       `<option value="${t.id}">${esc(t.nome)}</option>`).join('');
+    desenharParticipantes('c-participantes');
     carregarTudo();
     ligarRelogio();
   } else {
@@ -1394,6 +1414,33 @@ window.removerItem = async (itemId, k, demandaId) => {
   carregarRetornos(); carregarCronograma();
 };
 
+window.concluirDemanda = (id, numero, prazo, pendentes) => {
+  const hj = hoje();
+  const antes = prazo && hj < prazo;
+  const depois = prazo && hj > prazo;
+  modal(`Concluir ${numero}`, `
+    ${pendentes ? `<div class="aviso aviso-err">
+      ${pendentes} item(ns) ainda em aberto nesta demanda. Concluir agora
+      encerra a cotação mesmo assim.</div>` : ''}
+    <p style="font-size:13.5px;color:var(--ink2);margin-bottom:14px">
+      ${antes ? `Entrega antecipada: o prazo era ${dataBR(prazo)}.`
+       : depois ? `Entrega em atraso: o prazo era ${dataBR(prazo)}.`
+       : 'Entrega dentro do prazo combinado.'}
+      A demanda sai do cronograma e passa a contar como concluída.</p>
+    <div class="field"><label for="m-sit">Encerrar como</label>
+      <select id="m-sit">
+        <option value="concluida">Concluída — proposta entregue</option>
+        <option value="cancelada">Cancelada — não seguiu adiante</option>
+      </select></div>`,
+    async () => {
+      const {error} = await sb.from('demandas')
+        .update({status: $('m-sit').value}).eq('id', id);
+      if(error) throw new Error(error.message);
+      aviso('app-aviso', `${numero} encerrada.`, 'ok');
+      carregarTudo();
+    }, 'Confirmar');
+};
+
 window.alternarSub = async (id) => {
   const g = $('sub-' + id), c = $('cr-' + id);
   const fechado = g.classList.toggle('hidden');
@@ -1654,6 +1701,41 @@ $('btn-abrir-dem').onclick = async () => {
         esc(p.nome)}</option>`).join('');
 };
 
+$('btn-novo-tipo').onclick = () => modal('Novo tipo de cotação', `
+  <p style="font-size:13.5px;color:var(--ink2);margin-bottom:14px">
+    Fica disponível também no formulário do vendedor.</p>
+  <div class="field"><label for="t-nome">Nome</label>
+    <input id="t-nome" placeholder="Ex.: Câmara de estocagem"></div>
+  <div class="row2">
+    <div class="field"><label for="t-prazo">Prazo sugerido (dias úteis)</label>
+      <input id="t-prazo" type="number" min="1" max="120" value="5"></div>
+    <div class="field"><label for="t-ordem">Ordem na lista</label>
+      <input id="t-ordem" type="number" min="1" max="99" value="50"></div>
+  </div>
+  <div class="field"><label for="t-desc">Descrição <span style="font-weight:400">(opcional)</span></label>
+    <input id="t-desc"></div>`,
+  async () => {
+    const nome = $('t-nome').value.trim();
+    if(!nome) throw new Error('Informe o nome do tipo.');
+    const {data, error} = await sb.from('tipos_cotacao').insert({
+      nome,
+      prazo_dias: Number($('t-prazo').value) || 5,
+      ordem: Number($('t-ordem').value) || 50,
+      descricao: $('t-desc').value.trim() || null,
+    }).select('id, nome, prazo_dias').single();
+    if(error) throw new Error(error.message.includes('duplicate')
+      ? 'Já existe um tipo com esse nome.' : error.message);
+
+    // Recarrega a lista e já deixa o novo tipo selecionado.
+    const {data: tipos} = await sb.from('tipos_cotacao')
+      .select('*').eq('ativo', true).order('ordem');
+    TIPOS = tipos || [];
+    $('d-tipo').innerHTML = TIPOS.map(t =>
+      `<option value="${t.id}" data-p="${t.prazo_dias}" ${
+        t.id === data.id ? 'selected' : ''}>${esc(t.nome)}</option>`).join('');
+    aviso('app-aviso', `Tipo "${data.nome}" criado.`, 'ok');
+  }, 'Criar tipo');
+
 $('btn-cad-dem').onclick = async () => {
   const cliente = $('d-cliente').value.trim();
   const titulo  = $('d-titulo').value.trim();
@@ -1797,8 +1879,9 @@ async function carregarCronograma(){
   const rotulos = bloqueios.map((c, i) => {
     const a = pos(new Date(c.inicio).getTime());
     if(a > 96) return '';
-    return `<span class="lbl lbl-aus" style="left:${a}%;top:${i % 2 ? 20 : 2}px">
-      ${esc(c.mascarado ? 'Indisponível' : c.titulo)}</span>`;
+    return `<span class="lbl lbl-aus" style="left:${a}%;top:${(i % 3) * 18 + 2}px"
+      title="${esc(c.mascarado ? 'Indisponível' : c.titulo)}">${
+      esc((c.mascarado ? 'Indisponível' : c.titulo).slice(0, 22))}</span>`;
   }).join('');
 
   const ausencias = bloqueios.map(c => {
@@ -1875,6 +1958,7 @@ async function carregarCronograma(){
     // primeiro, sem precisar voltar para a aba Fila.
     const caret = `<button class="gt-caret" onclick="alternarSub('${d.id}')"
         id="cr-${d.id}" aria-label="Itens da demanda">▸ ${subs.length}</button>`;
+    const pendentes = subs.filter(i => !i.concluido_em).length;
 
     return `<div class="gt-linha">
       <div class="gt-rot" style="display:flex;align-items:center;gap:8px">
@@ -1885,6 +1969,9 @@ async function carregarCronograma(){
           <small><em>${esc(d.numero.replace('DEM-',''))}</em> ${esc(d.titulo)}</small>
           <i class="gt-vend">solicitado por ${esc(d.vendedor_nome || d.vendedor_email)}</i>
         </span>
+        <button class="gt-ok" onclick="concluirDemanda('${d.id}','${esc(d.numero)}',
+          '${d.prazo_previsto}',${pendentes})"
+          title="Marcar como concluída">✓</button>
       </div>
       <div class="gt-trilha">
         <div class="gt-barra ${conf ? 'conflito' : ''}"
@@ -1947,6 +2034,7 @@ $('btn-comp').onclick = async () => {
     return aviso('app-aviso','O link precisa começar com http:// ou https://');
 
   const base = {
+    participantes: lerParticipantes('c-participantes'),
     tipo_id: $('c-tipo').value,
     titulo: $('c-titulo').value.trim(),
     local: $('c-local').value.trim() || null,
@@ -1988,15 +2076,35 @@ $('btn-comp').onclick = async () => {
   ['c-titulo','c-local','c-inicio','c-fim','c-link','c-ate'].forEach(i => $(i).value = '');
   $('c-privado').checked = false;
   $('c-repete').value = ''; $('c-ate-campo').classList.add('hidden');
+  desenharParticipantes('c-participantes');
   carregarAgenda(); carregarConflitos(); carregarCronograma();
 };
+
+/* ---------------- participantes ---------------- */
+// Só faz sentido convidar outra pessoa: o dono já está no compromisso.
+function desenharParticipantes(alvo, marcados = []){
+  const outros = Object.values(PESSOAS).filter(p => p.id !== EU.id);
+  const el = $(alvo);
+  if(!outros.length){
+    el.innerHTML = '<span style="font-size:13px;color:var(--ink3)">'
+      + 'Ninguém mais no setor para convidar.</span>';
+    return;
+  }
+  el.innerHTML = outros.map(p => `<label>
+    <input type="checkbox" value="${p.id}" ${
+      marcados.includes(p.id) ? 'checked' : ''}>
+    ${avatar(p.id, 22)}${esc(p.nome)}</label>`).join('');
+}
+
+const lerParticipantes = (alvo) =>
+  [...$(alvo).querySelectorAll('input:checked')].map(i => i.value);
 
 /* ---------------- editar compromisso ---------------- */
 // Clique simples abre a edição; duplo clique abre o link. O timer separa
 // os dois: o simples só age se nenhum segundo clique chegar em 260 ms.
 let CLIQUE_TIMER = null;
 
-window.cliqueEvento = (id, link) => {
+window.cliqueEvento = (id, link, meu) => {
   if(CLIQUE_TIMER){
     clearTimeout(CLIQUE_TIMER); CLIQUE_TIMER = null;
     if(link && /^https?:\/\//i.test(link))
@@ -2007,7 +2115,7 @@ window.cliqueEvento = (id, link) => {
   }
   CLIQUE_TIMER = setTimeout(() => {
     CLIQUE_TIMER = null;
-    editarCompromisso(id);
+    if(meu) editarCompromisso(id);
   }, 260);
 };
 
@@ -2022,6 +2130,8 @@ async function editarCompromisso(id){
   const {data: c, error} = await sb.from('compromissos')
     .select('*').eq('id', id).single();
   if(error || !c) return aviso('app-aviso','Compromisso não encontrado.');
+  if(c.responsavel_id !== EU.id)
+    return aviso('app-aviso','Só quem criou o compromisso pode editá-lo.');
 
   const opcoesTipo = TIPOS_COMP.map(t =>
     `<option value="${t.id}" ${t.id === c.tipo_id ? 'selected' : ''}>${
@@ -2046,6 +2156,8 @@ async function editarCompromisso(id){
       <div class="field"><label for="e-fim">Fim</label>
         <input id="e-fim" type="datetime-local" value="${paraInput(c.fim)}"></div>
     </div>
+    <div class="field"><label>Participantes</label>
+      <div id="e-parts" class="parts"></div></div>
     <div class="field"><label for="e-local">Local</label>
       <input id="e-local" value="${esc(c.local || '')}"></div>
     <div class="field"><label for="e-link">Link</label>
@@ -2080,6 +2192,7 @@ async function editarCompromisso(id){
         privado: $('e-privado').checked,
         bloqueia_agenda: $('e-bloqueia').checked,
         aviso_minutos: $('e-aviso').value ? Number($('e-aviso').value) : null,
+        participantes: lerParticipantes('e-parts'),
       }).eq('id', id);
       if(e2) throw new Error(e2.message);
       aviso('app-aviso','Compromisso atualizado.','ok');
@@ -2102,6 +2215,8 @@ async function editarCompromisso(id){
         carregarAgenda(); carregarConflitos(); carregarCronograma();
       }
     });
+
+  desenharParticipantes('e-parts', c.participantes || []);
 }
 
 /* ---------------- calendário mensal ---------------- */
@@ -2174,18 +2289,24 @@ async function carregarAgenda(){
         : new Date(c.inicio).toLocaleTimeString('pt-BR',
             {hour:'2-digit', minute:'2-digit'});
       // Só o dono edita. Compromisso de outro é apenas exibido.
+      // Convidado vê o compromisso, mas não edita: o clique só abre o link.
       const meu = c.eh_meu;
+      const clicavel = meu || !!c.link;
       return `<div class="cal-ev ${c.mascarado ? 'mask' : ''} ${
           c.link ? 'cal-ev-link' : ''}"
         style="border-left-color:${esc(c.cor)}"
-        ${meu ? `data-id="${c.id}" onclick="cliqueEvento('${c.id}',
-          ${c.link ? `'${esc(c.link)}'` : 'null'})"` : ''}
+        ${clicavel ? `data-id="${c.id}" onclick="cliqueEvento('${c.id}',
+          ${c.link ? `'${esc(c.link)}'` : 'null'}, ${meu})"` : ''}
         title="${meu ? (c.link ? 'Clique para editar · duplo clique abre o link'
-                               : 'Clique para editar') : ''}">
+                               : 'Clique para editar')
+                     : (c.link ? 'Duplo clique abre o link' : '')}">
         <b>${esc(c.titulo)}</b>
         <span>${esc(horario)} · ${esc(c.responsavel)}${
           c.local ? ' · ' + esc(c.local) : ''}${
-          c.serie_id ? ' · repete' : ''}</span></div>`;
+          c.serie_id ? ' · repete' : ''}${
+          (c.participantes || []).length
+            ? `<span class="cal-parts">${c.participantes.map(pid =>
+                avatar(pid, 16)).join('')}</span>` : ''}</span></div>`;
     }).join('');
 
     const entregas = (prazos[chave] || []).map(x => {
